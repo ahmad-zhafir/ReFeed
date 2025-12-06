@@ -8,7 +8,7 @@ A modern, hyperlocal food sharing web application that connects local food donor
 
 ## 🚀 Live Demo
 
-[View Live Deployment](https://food-loop-indol.vercel.app/)
+Deployment Link: [View Live Deployment](https://food-loop-indol.vercel.app/)
 
 ### Testing Credentials
 
