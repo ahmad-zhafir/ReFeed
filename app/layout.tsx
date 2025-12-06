@@ -3,7 +3,7 @@ import "./globals.css";
 import { Toaster } from "react-hot-toast";
 
 export const metadata: Metadata = {
-  title: "The Leftover Loop - Hyperlocal Food Sharing",
+  title: "Food Loop",
   description: "Connect local food donors with claimers in real-time",
 };
 
