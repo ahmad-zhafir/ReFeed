@@ -4,55 +4,55 @@ A modern, hyperlocal food sharing web application that connects local food donor
 
 ![Food Loop](https://img.shields.io/badge/Next.js-14-black) ![TypeScript](https://img.shields.io/badge/TypeScript-5.5-blue) ![Firebase](https://img.shields.io/badge/Firebase-10.14-orange) ![Tailwind CSS](https://img.shields.io/badge/Tailwind-3.4-38bdf8)
 
+---
+
+## 🚀 Live Demo
+
+[View Live Deployment](https://food-loop-indol.vercel.app/)
+
+### Testing Credentials
+
+To test the application without creating a new account, use:
+
+- **Email:** user@example.com  
+- **Password:** password123
+
+---
+
 ## ✨ Features
 
-### Core Functionality
-- **User Authentication**: Email/Password sign-up and login with Firebase Authentication
-- **Donor Dashboard**: Create and manage food donation listings
-- **Claimer Map View**: Browse available food on an interactive Google Map
-- **Real-time Updates**: Live synchronization across all users using Firestore
-- **Image Upload**: Upload food photos directly to Firebase Storage or use image URLs
-- **Address Autocomplete**: Google Places API integration for easy address entry
-- **Current Location**: One-click location detection for quick address entry
+- **User Authentication:** Secure sign-up/login via Firebase Auth.  
+- **Donor Dashboard:** Create listings with photos, quantities, and pickup details.  
+- **Interactive Map:** Real-time Google Maps integration showing available food nearby.  
+- **Smart Location:** Address autocomplete (Google Places) and one-click geolocation.  
+- **Real-time Sync:** Instant updates for listings and claims using Firestore.  
+- **Dual Roles:** Seamlessly switch between Donor and Claimer modes.  
+- **Responsive Design:** Optimized for mobile, tablet, and desktop.  
 
-### User Experience
-- **Toast Notifications**: Beautiful, non-intrusive notifications for all actions
-- **Modern UI**: Minimalist, aesthetic design with gradient backgrounds
-- **Responsive Design**: Works seamlessly on desktop, tablet, and mobile
-- **Real-time Map**: Interactive Google Maps with custom markers
-- **My Listings**: View and manage all your donations with status tracking
-- **My Claims**: Track all your claimed items in one place
-- **Smart Sorting**: Active listings shown first, fully claimed at bottom
-
-### Technical Features
-- **Geocoding**: Automatic address to coordinates conversion
-- **Reverse Geocoding**: Get address from current location
-- **Quantity Management**: Automatic calculation of remaining quantities
-- **Status Tracking**: Active and claimed status for listings
-- **Multiple Claims**: Support for multiple claimers per listing
-- **Malaysia-Focused**: Default map view centered on Malaysia
+---
 
 ## 🛠️ Tech Stack
 
-- **Framework**: Next.js 14 (App Router)
-- **Language**: TypeScript
-- **Styling**: Tailwind CSS
-- **Database**: Firebase Firestore
-- **Authentication**: Firebase Authentication
-- **Storage**: Firebase Storage
-- **Maps**: Google Maps JavaScript API with Places API
-- **Notifications**: react-hot-toast
-- **Deployment**: Vercel (ready)
+- **Framework:** Next.js 14 (App Router)  
+- **Language:** TypeScript  
+- **Styling:** Tailwind CSS  
+- **Backend:** Firebase (Auth, Firestore, Storage)  
+- **Maps:** Google Maps JavaScript API & Places API  
+- **Notifications:** react-hot-toast  
+
+---
 
 ## 📋 Prerequisites
 
-- Node.js 18+ and npm
-- Firebase project with Firestore and Storage enabled
-- Google Cloud project with Maps JavaScript API and Places API enabled
-- Google Maps API key
-- Firebase configuration credentials
+Before running locally, ensure you have:
 
-## 🚀 Setup Instructions
+- Node.js 18+  
+- A Firebase Project (Auth, Firestore, Storage enabled)  
+- A Google Cloud Project (Maps JS API, Places API enabled)  
+
+---
+
+## 🚀 Local Setup
 
 ### 1. Clone and Install
 
@@ -189,133 +189,6 @@ Open [http://localhost:3000](http://localhost:3000) in your browser.
    - Confirm claim
 5. **Track Claims**: View all your claims in "My Claims" section
 
-## 📊 Data Model
-
-### Listing Document
-
-```typescript
-{
-  id: string;                      // Document ID
-  donor_id: string;                // User ID of donor
-  donor_name?: string;             // Donor's name
-  donor_contact?: string;         // Donor's contact
-  title: string;                   // Food description
-  quantity: string;                // Original total quantity
-  remaining_quantity?: string;    // Quantity still available
-  address: string;               // Pickup address
-  latitude: number;               // Map coordinate
-  longitude: number;              // Map coordinate
-  image_url: string;              // Image URL
-  status: 'active' | 'claimed';   // Listing status
-  created_at: Timestamp;          // Creation timestamp
-}
-```
-
-### Claim Document
-
-```typescript
-{
-  id: string;                     // Document ID
-  listing_id: string;              // ID of claimed listing
-  claimer_id: string;              // User ID of claimer
-  claimer_name: string;            // Claimer's name
-  claimer_contact: string;        // Claimer's contact
-  quantity: string;                // Quantity claimed
-  created_at: Timestamp;           // Claim timestamp
-}
-```
-
-### User Profile Document
-
-```typescript
-{
-  id: string;                     // User ID
-  email: string;                  // User email
-  name: string;                   // User name
-  contact: string;                 // Contact number
-  created_at: Timestamp;           // Profile creation date
-}
-```
-
-## 🚀 Deployment
-
-### Deploy to Vercel
-
-1. **Push to GitHub**:
-   ```bash
-   git add .
-   git commit -m "Ready for deployment"
-   git push origin main
-   ```
-
-2. **Import to Vercel**:
-   - Go to [vercel.com](https://vercel.com)
-   - Sign in with GitHub
-   - Click "Add New Project"
-   - Import your repository
-
-3. **Configure Environment Variables**:
-   - Add all variables from `.env.local`
-   - Make sure all `NEXT_PUBLIC_*` variables are added
-
-4. **Deploy**:
-   - Click "Deploy"
-   - Wait for build to complete
-   - Your app will be live!
-
-5. **Update Firebase Settings**:
-   - Add Vercel domain to Firebase Authorized Domains
-   - Update Google Maps API restrictions to include Vercel domain
-
-### Environment Variables for Vercel
-
-Add all these in Vercel dashboard:
-- `NEXT_PUBLIC_GOOGLE_MAPS_API_KEY`
-- `NEXT_PUBLIC_FIREBASE_API_KEY`
-- `NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN`
-- `NEXT_PUBLIC_FIREBASE_PROJECT_ID`
-- `NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET`
-- `NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID`
-- `NEXT_PUBLIC_FIREBASE_APP_ID`
-- `NEXT_PUBLIC_USE_SIMPLE_COLLECTION_PATH` (optional)
-- `NEXT_PUBLIC_APP_ID` (optional)
-
-## 🎨 UI/UX Features
-
-- **Gradient Backgrounds**: Beautiful white-to-green gradient across all pages
-- **Modern Cards**: Rounded corners, subtle shadows, hover effects
-- **Toast Notifications**: Non-blocking, centered notifications
-- **Responsive Design**: Mobile-first approach
-- **Loading States**: Smooth loading indicators
-- **Empty States**: Helpful messages when no data
-- **Custom Scrollbars**: Styled scrollbars for better aesthetics
-
-## 🔧 Development
-
-### Available Scripts
-
-```bash
-# Development server
-npm run dev
-
-# Production build
-npm run build
-
-# Start production server
-npm start
-
-# Lint code
-npm run lint
-```
-
-### Key Dependencies
-
-- `next`: Next.js framework
-- `react` & `react-dom`: React library
-- `firebase`: Firebase SDK
-- `@react-google-maps/api`: Google Maps integration
-- `react-hot-toast`: Toast notifications
-- `tailwindcss`: Utility-first CSS framework
 
 ## 📝 Notes
 
@@ -329,9 +202,6 @@ npm run lint
 
 Contributions are welcome! Please feel free to submit a Pull Request.
 
-## 📄 License
-
-MIT
 
 ## 🙏 Acknowledgments
 
