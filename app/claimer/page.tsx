@@ -310,6 +310,7 @@ export default function ClaimerPage() {
     } catch (error) {
       console.error('Error setting up Firestore subscription:', error);
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [user]);
 
   const handleClaimClick = (listing: Listing) => {

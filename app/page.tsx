@@ -206,7 +206,7 @@ export default function Home() {
                     className="object-contain"
                   />
                 </div>
-                <h3 className="text-3xl font-bold text-gray-900 mb-3">I'm a Donor</h3>
+                <h3 className="text-3xl font-bold text-gray-900 mb-3">I&apos;m a Donor</h3>
                 <p className="text-gray-600 mb-6 text-lg leading-relaxed">
                   Post your surplus food listings and help reduce waste in your community. Make a difference with every donation.
                 </p>
@@ -246,7 +246,7 @@ export default function Home() {
                     className="object-contain"
                   />
                 </div>
-                <h3 className="text-3xl font-bold text-gray-900 mb-3">I'm a Claimer</h3>
+                <h3 className="text-3xl font-bold text-gray-900 mb-3">I&apos;m a Claimer</h3>
                 <p className="text-gray-600 mb-6 text-lg leading-relaxed">
                   Browse available food listings on the map and claim items near you. Discover fresh meals in your neighborhood.
                 </p>

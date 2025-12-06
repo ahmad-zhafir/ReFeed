@@ -67,7 +67,7 @@ export default function ClaimModal({ listing, isOpen, onClose, onConfirm, maxQua
               placeholder={maxQuantity}
             />
             <p className="text-xs text-gray-500 mt-1">
-              Enter the quantity you want (e.g., "5 servings", "2 boxes", "10 pieces")
+              Enter the quantity you want (e.g., &quot;5 servings&quot;, &quot;2 boxes&quot;, &quot;10 pieces&quot;)
             </p>
           </div>
 
