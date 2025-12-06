@@ -1,7 +1,7 @@
 import { initializeApp, getApps, FirebaseApp } from "firebase/app";
 import { getAuth, Auth } from "firebase/auth";
 import { getFirestore, Firestore } from "firebase/firestore";
-import { getStorage, Storage } from "firebase/storage";
+import { getStorage, FirebaseStorage } from "firebase/storage";
 import { 
   signInWithCustomToken, 
   signInAnonymously, 
@@ -21,9 +21,9 @@ declare global {
 let app: FirebaseApp | null = null;
 let auth: Auth | null = null;
 let db: Firestore | null = null;
-let storage: Storage | null = null;
+let storage: FirebaseStorage | null = null;
 
-export const initializeFirebase = (): { app: FirebaseApp; auth: Auth; db: Firestore; storage: Storage } => {
+export const initializeFirebase = (): { app: FirebaseApp; auth: Auth; db: Firestore; storage: FirebaseStorage } => {
   if (app && auth && db && storage) {
     return { app, auth, db, storage };
   }
@@ -113,7 +113,7 @@ export const getFirebaseAuth = (): Auth => {
   return auth;
 };
 
-export const getFirebaseStorage = (): Storage => {
+export const getFirebaseStorage = (): FirebaseStorage => {
   if (!storage) {
     try {
       const { storage: firebaseStorage } = initializeFirebase();
