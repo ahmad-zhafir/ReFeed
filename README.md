@@ -14,8 +14,8 @@ A modern, hyperlocal food sharing web application that connects local food donor
 
 To test the application without creating a new account, use:
 
-- **Email:** user@example.com  
-- **Password:** password123
+- **Email:** user@foodloop.com / user2@foodloop.com  
+- **Password:** foodloop123
 
 ---
 
@@ -58,7 +58,7 @@ Before running locally, ensure you have:
 
 ```bash
 # Clone the repository
-git clone <your-repo-url>
+git clone https://github.com/ahmad-zhafir/FoodLoop.git
 cd food-loop
 
 # Install dependencies
