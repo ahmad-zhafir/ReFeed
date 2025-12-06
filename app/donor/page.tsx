@@ -47,15 +47,40 @@ export default function DonorPage() {
     libraries: ['places'],
   });
 
+  // Debug: Log API key status (only first few chars for security)
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      console.log('🔑 API Key Status:', {
+        exists: !!apiKey,
+        length: apiKey?.length || 0,
+        preview: apiKey ? `${apiKey.substring(0, 10)}...` : 'MISSING',
+        isMapsLoaded,
+        loadError: loadError?.message || null,
+      });
+    }
+  }, [apiKey, isMapsLoaded, loadError]);
+
   // Log if Places API is not available
   useEffect(() => {
     if (isMapsLoaded && typeof window !== 'undefined') {
       if (!window.google?.maps?.places) {
-        console.error('Places API is not loaded. Please enable Places API in Google Cloud Console.');
+        console.error('❌ Places API is not loaded. Please enable Places API in Google Cloud Console.');
+        console.error('Debug info:', {
+          googleExists: !!window.google,
+          mapsExists: !!window.google?.maps,
+          placesExists: !!window.google?.maps?.places,
+        });
         toast.error('Places API not available. Please enable it in Google Cloud Console.');
+      } else {
+        console.log('✅ Google Places API loaded successfully');
       }
     }
-  }, [isMapsLoaded]);
+    
+    if (loadError) {
+      console.error('❌ Google Maps script load error:', loadError);
+      toast.error('Failed to load Google Maps. Please check your API key configuration.');
+    }
+  }, [isMapsLoaded, loadError]);
 
   useEffect(() => {
     let listingsUnsubscribe: (() => void) | undefined;
@@ -874,4 +899,5 @@ export default function DonorPage() {
     </div>
   );
 }
+
 
