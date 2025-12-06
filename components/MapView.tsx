@@ -241,21 +241,32 @@ export default function MapView({ listings, onClaimListing, selectedListingId, o
               />
             )}
             <div className="flex gap-2 mt-2">
-              <button
-                onClick={() => {
-                  onClaimListing(selectedListing);
-                  setSelectedListing(null);
-                }}
-                disabled={selectedListing.donor_id === currentUserId || (selectedListing.remaining_quantity && parseFloat(selectedListing.remaining_quantity.replace(/[^0-9.]/g, '')) <= 0)}
-                className={`flex-1 py-2 px-4 rounded-md ${
-                  selectedListing.donor_id === currentUserId || (selectedListing.remaining_quantity && parseFloat(selectedListing.remaining_quantity.replace(/[^0-9.]/g, '')) <= 0)
-                    ? 'bg-gray-300 text-gray-500 cursor-not-allowed'
-                    : 'bg-blue-600 text-white hover:bg-blue-700'
-                }`}
-                title={selectedListing.donor_id === currentUserId ? 'Cannot claim your own donation' : (selectedListing.remaining_quantity && parseFloat(selectedListing.remaining_quantity.replace(/[^0-9.]/g, '')) <= 0) ? 'Fully claimed' : 'Claim this item'}
-              >
-                {selectedListing.donor_id === currentUserId ? 'Your Donation' : (selectedListing.remaining_quantity && parseFloat(selectedListing.remaining_quantity.replace(/[^0-9.]/g, '')) <= 0) ? 'Fully Claimed' : 'Claim This Item'}
-              </button>
+              {(() => {
+                const isOwnDonation = selectedListing.donor_id === currentUserId;
+                const remainingNum = selectedListing.remaining_quantity 
+                  ? parseFloat(selectedListing.remaining_quantity.replace(/[^0-9.]/g, '')) || 0
+                  : 0;
+                const isFullyClaimed = remainingNum <= 0;
+                const isDisabled = isOwnDonation || isFullyClaimed;
+                
+                return (
+                  <button
+                    onClick={() => {
+                      onClaimListing(selectedListing);
+                      setSelectedListing(null);
+                    }}
+                    disabled={isDisabled}
+                    className={`flex-1 py-2 px-4 rounded-md ${
+                      isDisabled
+                        ? 'bg-gray-300 text-gray-500 cursor-not-allowed'
+                        : 'bg-blue-600 text-white hover:bg-blue-700'
+                    }`}
+                    title={isOwnDonation ? 'Cannot claim your own donation' : isFullyClaimed ? 'Fully claimed' : 'Claim this item'}
+                  >
+                    {isOwnDonation ? 'Your Donation' : isFullyClaimed ? 'Fully Claimed' : 'Claim This Item'}
+                  </button>
+                );
+              })()}
               {onGetDirections && (
                 <button
                   onClick={() => onGetDirections(selectedListing)}
