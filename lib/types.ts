@@ -12,6 +12,7 @@ export interface Listing {
   image_url: string;
   status: 'active' | 'claimed';
   created_at: any; // Firestore Timestamp
+  claims?: Claim[]; // Claims associated with this listing (optional, added when loading)
 }
 
 export interface Claim {
