@@ -21,3 +21,13 @@ export const getClaimsCollectionPath = (): string => {
   return `/artifacts/${APP_ID}/public/data/claims`;
 };
 
+// Marketplace: orders collection (cash-on-pickup reservations)
+export const getOrdersCollectionPath = (): string => {
+  if (process.env.NEXT_PUBLIC_USE_SIMPLE_COLLECTION_PATH === 'true') {
+    return 'orders';
+  }
+
+  const APP_ID = process.env.NEXT_PUBLIC_APP_ID || 'default-app-id';
+  return `/artifacts/${APP_ID}/public/data/orders`;
+};
+
