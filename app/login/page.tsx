@@ -243,26 +243,40 @@ function LoginForm() {
                         <button
                           type="button"
                           onClick={() => setSelectedRole('generator')}
-                          className={`p-4 rounded-lg border-2 transition-all text-left ${
+                          className={`p-4 rounded-lg border-2 transition-all text-left flex items-center gap-3 ${
                             selectedRole === 'generator'
                               ? 'border-[#13ec37] bg-[#13ec37]/10 dark:bg-[#13ec37]/20'
                               : 'border-gray-300 dark:border-white/10 hover:border-[#13ec37]/50'
                           }`}
                         >
-                          <p className="font-semibold text-slate-900 dark:text-white">Restaurant / Generator</p>
-                          <p className="text-xs text-slate-500 dark:text-[#92c99b] mt-1">Sell waste feed</p>
+                          <span className={`text-2xl flex-shrink-0 flex items-center ${
+                            selectedRole === 'generator' ? 'text-[#13ec37]' : 'text-slate-400 dark:text-gray-500'
+                          }`}>
+                            <span className="material-symbols-outlined">restaurant</span>
+                          </span>
+                          <div>
+                            <p className="font-semibold text-slate-900 dark:text-white">Restaurant</p>
+                            <p className="text-xs text-slate-500 dark:text-[#92c99b] mt-1">Sell waste feed</p>
+                          </div>
                         </button>
                         <button
                           type="button"
                           onClick={() => setSelectedRole('farmer')}
-                          className={`p-4 rounded-lg border-2 transition-all text-left ${
+                          className={`p-4 rounded-lg border-2 transition-all text-left flex items-center gap-3 ${
                             selectedRole === 'farmer'
                               ? 'border-[#13ec37] bg-[#13ec37]/10 dark:bg-[#13ec37]/20'
                               : 'border-gray-300 dark:border-white/10 hover:border-[#13ec37]/50'
                           }`}
                         >
-                          <p className="font-semibold text-slate-900 dark:text-white">Farmer / Receiver</p>
-                          <p className="text-xs text-slate-500 dark:text-[#92c99b] mt-1">Buy waste feed</p>
+                          <span className={`text-2xl flex-shrink-0 flex items-center ${
+                            selectedRole === 'farmer' ? 'text-[#13ec37]' : 'text-slate-400 dark:text-gray-500'
+                          }`}>
+                            <span className="material-symbols-outlined">agriculture</span>
+                          </span>
+                          <div>
+                            <p className="font-semibold text-slate-900 dark:text-white">Farmer</p>
+                            <p className="text-xs text-slate-500 dark:text-[#92c99b] mt-1">Buy waste feed</p>
+                          </div>
                         </button>
                       </div>
                     </div>
