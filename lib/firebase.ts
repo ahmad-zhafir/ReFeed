@@ -139,7 +139,13 @@ export const signInWithEmail = async (email: string, password: string) => {
 
 export const signOut = async () => {
   const { auth } = initializeFirebase();
-  return await firebaseSignOut(auth);
+  try {
+    await firebaseSignOut(auth);
+    return;
+  } catch (error) {
+    console.error('Sign out error:', error);
+    throw error;
+  }
 };
 
 export const getCurrentUser = (): User | null => {

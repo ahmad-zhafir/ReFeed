@@ -558,9 +558,16 @@ export default function DonorPage() {
                       </div>
                       <button
                         onClick={async () => {
-                          await signOut();
-                          setProfileDropdownOpen(false);
-                          router.push('/login');
+                          try {
+                            setProfileDropdownOpen(false);
+                            await signOut();
+                            // Wait a bit for auth state to update
+                            await new Promise(resolve => setTimeout(resolve, 100));
+                            router.push('/login');
+                          } catch (error: any) {
+                            console.error('Logout error:', error);
+                            toast.error('Failed to sign out. Please try again.');
+                          }
                         }}
                         className="w-full text-left px-4 py-2 text-sm font-medium text-red-600 hover:bg-red-50 transition-colors flex items-center gap-2"
                       >
