@@ -60,7 +60,7 @@ After updating, your `.env.local` should look like this:
 
 ```env
 # Google Maps API Key
-NEXT_PUBLIC_GOOGLE_MAPS_API_KEY=AIzaSyDIamIN4h-SyAZjGJ9nERjxZGyEjFXDrMs
+NEXT_PUBLIC_GOOGLE_MAPS_API_KEY=YourActualApiKeyHere
 
 # App ID for Firestore collection path
 NEXT_PUBLIC_APP_ID=default-app-id
