@@ -68,6 +68,67 @@ export default function LocationOnboardingPage() {
     );
   };
 
+  const useTestLocation = async () => {
+    // Test location: FCSIT UPM, Serdang
+    const testAddress = 'FCSIT UPM, Serdang, Selangor, Malaysia';
+    
+    toast.loading('Setting test location…', { id: 'test-loc' });
+    
+    try {
+      // Try to geocode the address
+      const response = await fetch('/api/geocode', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ address: testAddress }),
+      });
+      
+      if (response.ok) {
+        const data = await response.json();
+        if (data.latitude && data.longitude) {
+          setLocation({
+            latitude: data.latitude,
+            longitude: data.longitude,
+            address: data.formatted_address || testAddress,
+          });
+          setManualAddress(data.formatted_address || testAddress);
+          toast.dismiss('test-loc');
+          toast.success('Test location set: FCSIT UPM, Serdang');
+        } else {
+          // Fallback to hardcoded coordinates if geocoding fails
+          setLocation({
+            latitude: 2.9885,
+            longitude: 101.7162,
+            address: testAddress,
+          });
+          setManualAddress(testAddress);
+          toast.dismiss('test-loc');
+          toast.success('Test location set: FCSIT UPM, Serdang');
+        }
+      } else {
+        // Fallback to hardcoded coordinates if API fails
+        setLocation({
+          latitude: 2.9885,
+          longitude: 101.7162,
+          address: testAddress,
+        });
+        setManualAddress(testAddress);
+        toast.dismiss('test-loc');
+        toast.success('Test location set: FCSIT UPM, Serdang');
+      }
+    } catch (error) {
+      console.error('Geocoding error:', error);
+      // Fallback to hardcoded coordinates
+      setLocation({
+        latitude: 2.9885,
+        longitude: 101.7162,
+        address: testAddress,
+      });
+      setManualAddress(testAddress);
+      toast.dismiss('test-loc');
+      toast.success('Test location set: FCSIT UPM, Serdang');
+    }
+  };
+
   const save = async () => {
     if (!canSave || saving) return;
     setSaving(true);
@@ -144,22 +205,40 @@ export default function LocationOnboardingPage() {
               <p className="text-sm font-bold text-white uppercase tracking-wide">Capture GPS (recommended)</p>
             </div>
             <p className="text-sm text-[#92c99b] mb-4">Works best for 5–10km matching.</p>
-            <button
-              onClick={requestBrowserLocation}
-              className="px-6 py-3 rounded-lg bg-[#13ec37] hover:bg-[#11d632] text-[#112214] font-bold transition-all shadow-[0_0_15px_rgba(19,236,55,0.3)] flex items-center gap-2"
-            >
-              <span className="material-symbols-outlined text-lg">my_location</span>
-              Use my current location
-            </button>
+            <div className="flex flex-col sm:flex-row gap-3">
+              <button
+                onClick={requestBrowserLocation}
+                className="flex-1 px-6 py-3 rounded-lg bg-[#13ec37] hover:bg-[#11d632] text-[#112214] font-bold transition-all shadow-[0_0_15px_rgba(19,236,55,0.3)] flex items-center justify-center gap-2"
+              >
+                <span className="material-symbols-outlined text-lg">my_location</span>
+                Use my current location
+              </button>
+              
+              {role === 'farmer' && (
+                <button
+                  onClick={useTestLocation}
+                  className="flex-1 px-6 py-3 rounded-lg bg-yellow-500/20 hover:bg-yellow-500/30 text-yellow-400 hover:text-yellow-300 font-bold transition-all border border-yellow-500/30 hover:border-yellow-500/50 flex items-center justify-center gap-2"
+                  title="MVP Demo: Set location to FCSIT UPM, Serdang"
+                >
+                  <span className="material-symbols-outlined text-lg">science</span>
+                  Use Test Location
+                </button>
+              )}
+            </div>
 
             {location && (
               <div className="mt-4 p-3 bg-[#112214] rounded-lg border border-[#13ec37]/20">
                 <p className="text-xs text-[#92c99b] mb-1">
                   <span className="font-semibold text-white">Saved coordinates:</span>
                 </p>
-                <p className="text-sm text-[#13ec37] font-mono">
+                <p className="text-sm text-[#13ec37] font-mono mb-2">
                   {location.latitude.toFixed(5)}, {location.longitude.toFixed(5)}
                 </p>
+                {location.address && (
+                  <p className="text-xs text-[#92c99b]">
+                    <span className="font-semibold text-white">Address:</span> {location.address}
+                  </p>
+                )}
               </div>
             )}
           </div>
