@@ -1500,7 +1500,7 @@ function GeneratorDashboardContent() {
                   </div>
 
                   {/* Map Container */}
-                  <div className="bg-[#1c2e20] border border-[#234829] rounded-xl overflow-hidden shadow-lg" style={{ height: '600px', minHeight: '600px' }}>
+                  <div className="bg-[#1c2e20] border border-[#234829] rounded-xl overflow-hidden shadow-lg relative" style={{ height: '600px', minHeight: '600px' }}>
                     <FarmerMapView
                       farmers={farmers}
                       generatorLocation={userProfile?.location}
@@ -1508,6 +1508,47 @@ function GeneratorDashboardContent() {
                         console.log('Selected farmer:', farmer);
                       }}
                     />
+                    
+                    {/* Map Legend */}
+                    <div className="absolute bottom-4 left-4 bg-[#1c2e20]/95 backdrop-blur-sm border border-[#234829] rounded-lg p-4 shadow-lg z-10">
+                      <h4 className="text-sm font-bold text-white mb-3 flex items-center gap-2">
+                        <span className="material-symbols-outlined text-base">info</span>
+                        Map Legend
+                      </h4>
+                      <div className="space-y-2.5">
+                        {/* Your Location */}
+                        <div className="flex items-center gap-2.5">
+                          <div className="flex-shrink-0">
+                            <div className="w-4 h-4 rounded-full bg-red-500 border-2 border-white"></div>
+                          </div>
+                          <span className="text-xs text-[#92c99b]">Your Location</span>
+                        </div>
+                        
+                        {/* Farmer */}
+                        <div className="flex items-center gap-2.5">
+                          <div className="flex-shrink-0">
+                            <div className="w-4 h-4 rounded-full bg-[#4CAF50] border-2 border-white"></div>
+                          </div>
+                          <span className="text-xs text-[#92c99b]">Farmer</span>
+                        </div>
+                        
+                        {/* Selected Farmer */}
+                        <div className="flex items-center gap-2.5">
+                          <div className="flex-shrink-0">
+                            <div className="w-4 h-4 rounded-full bg-[#13ec37] border-2 border-white shadow-[0_0_8px_rgba(19,236,55,0.6)]"></div>
+                          </div>
+                          <span className="text-xs text-[#92c99b]">Selected Farmer</span>
+                        </div>
+                        
+                        {/* Search Radius */}
+                        <div className="flex items-center gap-2.5">
+                          <div className="flex-shrink-0">
+                            <div className="w-4 h-4 rounded-full bg-[#13ec37]/20 border-2 border-[#13ec37]/50"></div>
+                          </div>
+                          <span className="text-xs text-[#92c99b]">Search Radius</span>
+                        </div>
+                      </div>
+                    </div>
                   </div>
 
                   {/* Farmer List */}

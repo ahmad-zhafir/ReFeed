@@ -175,7 +175,7 @@ export default function Home() {
       </header>
 
       {/* Main Content */}
-      <main className="relative flex-grow flex flex-col justify-center items-center w-full min-h-screen">
+      <main className="relative flex-grow flex flex-col items-center w-full min-h-screen">
         {/* Background Image */}
         <div 
           className="absolute inset-0 z-0 bg-center bg-cover bg-no-repeat" 
@@ -188,7 +188,7 @@ export default function Home() {
         <div className="absolute inset-0 z-0 bg-black/60"></div>
 
         {/* Content */}
-        <div className="relative z-10 w-full max-w-4xl px-6 flex flex-col items-center text-center mt-12">
+        <div className="relative z-10 w-full max-w-4xl px-6 flex flex-col items-center text-center py-12 md:py-20">
           {/* Sustainable Ecosystem Badge */}
           <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-[#13ec37]/10 border border-[#13ec37]/20 backdrop-blur-md mb-8">
             <span className="material-symbols-outlined text-[#13ec37] text-sm">recycling</span>
@@ -217,13 +217,13 @@ export default function Home() {
           </div>
 
           {/* Trust Indicator */}
-          <div className="flex flex-col items-center gap-4 pt-4 border-t border-white/10 w-full max-w-xs">
+          <div className="flex flex-col items-center gap-4 pt-4 border-t border-white/10 w-full max-w-xs mb-8">
             <span className="text-sm font-medium text-white/90">Powered by CodeCraft Tech</span>
           </div>
         </div>
 
         {/* Footer */}
-        <div className="absolute bottom-6 left-0 right-0 flex justify-center gap-8 text-xs font-medium text-white/60 z-10">
+        <div className="relative z-10 w-full flex justify-center gap-8 text-xs font-medium text-white/60 pb-6">
           <Link href="#help" className="hover:text-[#13ec37] transition-colors">Help Center</Link>
           <Link href="#status" className="hover:text-[#13ec37] transition-colors">Platform Status</Link>
           <Link href="#privacy" className="hover:text-[#13ec37] transition-colors">Privacy Policy</Link>
