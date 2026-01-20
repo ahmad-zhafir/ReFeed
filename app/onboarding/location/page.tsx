@@ -3,7 +3,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import toast from 'react-hot-toast';
-import Logo from '@/components/Logo';
 import { onAuthStateChange } from '@/lib/firebase';
 import { getUserProfile, updateUserProfile } from '@/lib/userProfile';
 import type { MarketplaceRole, UserProfile } from '@/lib/types';
@@ -110,94 +109,121 @@ export default function LocationOnboardingPage() {
 
   if (loading) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-white via-green-50 to-emerald-100">
-        <div className="text-gray-700 font-semibold">Loading...</div>
+      <div className="min-h-screen flex items-center justify-center bg-[#102213]">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-[#13ec37] mx-auto mb-4"></div>
+          <p className="text-white font-semibold">Loading...</p>
+        </div>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-white via-green-50 to-emerald-100 flex items-center justify-center px-4">
-      <div className="max-w-2xl w-full bg-white rounded-2xl shadow-xl border border-gray-100 p-8">
-        <div className="flex items-center gap-3 mb-6">
-          <Logo className="w-10 h-10" />
+    <div className="min-h-screen bg-[#102213] flex items-center justify-center px-4 py-10">
+      <div className="max-w-2xl w-full bg-[#1c2e20] rounded-xl shadow-2xl border border-[#234829] p-8">
+        <div className="flex items-center gap-3 mb-8">
+          <div className="size-10 text-[#13ec37]">
+            <svg fill="none" viewBox="0 0 48 48" xmlns="http://www.w3.org/2000/svg">
+              <path d="M42.4379 44C42.4379 44 36.0744 33.9038 41.1692 24C46.8624 12.9336 42.2078 4 42.2078 4L7.01134 4C7.01134 4 11.6577 12.932 5.96912 23.9969C0.876273 33.9029 7.27094 44 7.27094 44L42.4379 44Z" fill="currentColor"></path>
+            </svg>
+          </div>
           <div>
-            <h1 className="text-2xl font-extrabold text-gray-900" style={{ fontFamily: '"Lilita One", sans-serif' }}>
+            <h1 className="text-2xl font-black text-white tracking-tight">
               Location & matching
             </h1>
-            <p className="text-gray-600 text-sm mt-1">
+            <p className="text-[#92c99b] text-sm mt-1">
               We use your location to show nearby listings. Farmers can adjust their search radius.
             </p>
           </div>
         </div>
 
         <div className="space-y-6">
-          <div className="p-4 rounded-xl border border-gray-200 bg-gray-50">
-            <p className="text-sm font-semibold text-gray-900">Capture GPS (recommended)</p>
-            <p className="text-sm text-gray-600 mt-1">Works best for 5–10km matching.</p>
+          <div className="p-6 rounded-xl border border-[#234829] bg-[#234829]/30">
+            <div className="flex items-center gap-2 mb-2">
+              <span className="material-symbols-outlined text-[#13ec37]">location_on</span>
+              <p className="text-sm font-bold text-white uppercase tracking-wide">Capture GPS (recommended)</p>
+            </div>
+            <p className="text-sm text-[#92c99b] mb-4">Works best for 5–10km matching.</p>
             <button
               onClick={requestBrowserLocation}
-              className="mt-3 px-4 py-2 rounded-lg bg-emerald-600 text-white font-semibold hover:bg-emerald-700 transition-colors"
+              className="px-6 py-3 rounded-lg bg-[#13ec37] hover:bg-[#11d632] text-[#112214] font-bold transition-all shadow-[0_0_15px_rgba(19,236,55,0.3)] flex items-center gap-2"
             >
+              <span className="material-symbols-outlined text-lg">my_location</span>
               Use my current location
             </button>
 
             {location && (
-              <div className="mt-3 text-sm text-gray-700">
-                <span className="font-semibold">Saved coordinates:</span> {location.latitude.toFixed(5)}, {location.longitude.toFixed(5)}
+              <div className="mt-4 p-3 bg-[#112214] rounded-lg border border-[#13ec37]/20">
+                <p className="text-xs text-[#92c99b] mb-1">
+                  <span className="font-semibold text-white">Saved coordinates:</span>
+                </p>
+                <p className="text-sm text-[#13ec37] font-mono">
+                  {location.latitude.toFixed(5)}, {location.longitude.toFixed(5)}
+                </p>
               </div>
             )}
           </div>
 
           <div>
-            <label className="block text-sm font-semibold text-gray-900 mb-2">
+            <label className="block text-sm font-medium text-[#92c99b] mb-2">
               Address (fallback)
             </label>
             <input
               value={manualAddress}
               onChange={(e) => setManualAddress(e.target.value)}
-              className="w-full px-4 py-3 border-2 border-gray-200 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 transition-all text-gray-900"
+              className="w-full px-4 py-3 rounded-lg bg-[#102213] border border-[#234829] text-white placeholder:text-[#92c99b]/50 focus:ring-2 focus:ring-[#13ec37] focus:border-[#13ec37] transition-all"
               placeholder="Enter your address if you can't use GPS"
             />
-            <p className="text-xs text-gray-500 mt-1">
-              For this prototype, address-only won’t power distance filtering unless GPS is enabled.
+            <p className="text-xs text-[#92c99b]/70 mt-2 flex items-start gap-1">
+              <span className="material-symbols-outlined text-xs">info</span>
+              For this prototype, address-only won't power distance filtering unless GPS is enabled.
             </p>
           </div>
 
           {role === 'farmer' && (
-            <div>
-              <label className="block text-sm font-semibold text-gray-900 mb-2">
-                Search radius: <span className="text-emerald-700">{radiusKm} km</span>
+            <div className="p-6 rounded-xl border border-[#234829] bg-[#234829]/30">
+              <label className="block text-sm font-medium text-[#92c99b] mb-3">
+                Search radius: <span className="text-[#13ec37] font-bold">{radiusKm} km</span>
               </label>
               <input
                 type="range"
                 min={1}
-                max={20}
+                max={50}
                 step={1}
                 value={radiusKm}
                 onChange={(e) => setRadiusKm(parseInt(e.target.value, 10))}
-                className="w-full"
+                className="w-full accent-[#13ec37]"
               />
-              <div className="flex justify-between text-xs text-gray-500 mt-1">
+              <div className="flex justify-between text-xs text-[#92c99b] mt-2">
                 <span>1km</span>
-                <span>20km</span>
+                <span>50km</span>
               </div>
             </div>
           )}
 
-          <div className="flex justify-end gap-3">
+          <div className="flex justify-end gap-3 pt-4">
             <button
               onClick={() => router.push('/onboarding/role')}
-              className="px-4 py-2 rounded-lg bg-gray-100 text-gray-900 font-semibold hover:bg-gray-200 transition-colors"
+              className="px-6 py-3 rounded-lg bg-[#234829] hover:bg-[#234829]/80 text-[#92c99b] hover:text-white font-semibold transition-colors border border-[#234829]"
             >
               Back
             </button>
             <button
               onClick={save}
               disabled={!canSave || saving}
-              className="px-4 py-2 rounded-lg bg-gradient-to-r from-emerald-600 to-green-600 text-white font-semibold disabled:opacity-50"
+              className="px-6 py-3 rounded-lg bg-[#13ec37] hover:bg-[#11d632] text-[#112214] font-bold disabled:opacity-50 transition-all shadow-[0_0_15px_rgba(19,236,55,0.3)] flex items-center gap-2"
             >
-              {saving ? 'Saving…' : 'Continue'}
+              {saving ? (
+                <>
+                  <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-[#112214]"></div>
+                  <span>Saving…</span>
+                </>
+              ) : (
+                <>
+                  <span>Continue</span>
+                  <span className="material-symbols-outlined text-lg">arrow_forward</span>
+                </>
+              )}
             </button>
           </div>
         </div>

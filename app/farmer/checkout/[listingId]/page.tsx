@@ -12,7 +12,6 @@ import RoleGuard from '@/components/RoleGuard';
 import Link from 'next/link';
 import toast from 'react-hot-toast';
 import { signOut } from '@/lib/firebase';
-import { useRef } from 'react';
 
 export default function CheckoutPage() {
   return (
