@@ -7,6 +7,11 @@ import { Listing } from '@/lib/types';
 const mapContainerStyle = {
   width: '100%',
   height: '100%',
+  // Fix blurry text issue
+  transform: 'translateZ(0)',
+  WebkitTransform: 'translateZ(0)',
+  backfaceVisibility: 'hidden' as const,
+  WebkitBackfaceVisibility: 'hidden' as const,
 };
 
 // Default center: Malaysia (Kuala Lumpur)

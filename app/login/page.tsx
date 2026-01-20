@@ -112,9 +112,9 @@ function LoginForm() {
   return (
     <div className="bg-[#f6f8f6] dark:bg-[#102213] text-slate-900 dark:text-white font-display antialiased overflow-x-hidden flex flex-col min-h-screen">
       {/* Header */}
-      <header className="sticky top-0 z-50 w-full border-b border-solid border-gray-200 dark:border-[#234829] bg-white/80 dark:bg-[#102213]/80 backdrop-blur-md">
-        <div className="px-6 md:px-10 py-3 flex items-center justify-between mx-auto max-w-7xl">
-          <Link href="/" className="flex items-center gap-4 text-slate-900 dark:text-white cursor-pointer">
+      <header className="absolute top-0 z-50 w-full border-b border-white/10">
+        <div className="w-full px-6 md:px-10 py-4 flex items-center justify-between">
+          <Link href="/" className="flex items-center gap-4 text-white cursor-pointer">
             <div className="size-8 text-[#13ec37]">
               <svg fill="none" viewBox="0 0 48 48" xmlns="http://www.w3.org/2000/svg">
                 <path d="M42.4379 44C42.4379 44 36.0744 33.9038 41.1692 24C46.8624 12.9336 42.2078 4 42.2078 4L7.01134 4C7.01134 4 11.6577 12.932 5.96912 23.9969C0.876273 33.9029 7.27094 44 7.27094 44L42.4379 44Z" fill="currentColor"></path>
@@ -125,26 +125,26 @@ function LoginForm() {
 
           <nav className="hidden md:flex flex-1 justify-end gap-8 items-center">
             <div className="flex items-center gap-8">
-              <Link href="#about" className="text-slate-600 dark:text-white hover:text-[#13ec37] dark:hover:text-[#13ec37] transition-colors text-sm font-medium leading-normal">
+              <Link href="#about" className="text-white/90 hover:text-[#13ec37] transition-colors text-sm font-medium leading-normal">
                 About
               </Link>
-              <Link href="#impact" className="text-slate-600 dark:text-white hover:text-[#13ec37] dark:hover:text-[#13ec37] transition-colors text-sm font-medium leading-normal">
+              <Link href="#impact" className="text-white/90 hover:text-[#13ec37] transition-colors text-sm font-medium leading-normal">
                 Impact
               </Link>
-              <Link href="#partners" className="text-slate-600 dark:text-white hover:text-[#13ec37] dark:hover:text-[#13ec37] transition-colors text-sm font-medium leading-normal">
+              <Link href="#partners" className="text-white/90 hover:text-[#13ec37] transition-colors text-sm font-medium leading-normal">
                 Partners
               </Link>
             </div>
           </nav>
 
-          <div className="md:hidden text-slate-900 dark:text-white">
+          <div className="md:hidden text-white">
             <span className="material-symbols-outlined">menu</span>
           </div>
         </div>
       </header>
 
       {/* Main Content */}
-      <main className="flex-grow flex flex-col relative items-center justify-center p-4 py-10">
+      <main className="flex-grow flex flex-col relative items-center justify-center p-4 pt-24 pb-10">
         {/* Background */}
         <div className="absolute inset-0 z-0 overflow-hidden">
           <div 

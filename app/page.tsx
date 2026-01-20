@@ -75,7 +75,7 @@ export default function Home() {
     <div className="bg-[#102213] text-white font-display antialiased overflow-x-hidden flex flex-col min-h-screen">
       {/* Header */}
       <header className="absolute top-0 z-50 w-full border-b border-white/10">
-        <div className="px-6 md:px-10 py-4 flex items-center justify-between mx-auto max-w-7xl">
+        <div className="w-full px-6 md:px-10 py-4 flex items-center justify-between">
           <Link href="/" className="flex items-center gap-4 text-white cursor-pointer">
             <div className="size-8 text-[#13ec37]">
               <svg fill="none" viewBox="0 0 48 48" xmlns="http://www.w3.org/2000/svg">

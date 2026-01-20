@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import { onAuthStateChange, signOut } from '@/lib/firebase';
 import { User } from 'firebase/auth';
@@ -10,6 +10,7 @@ import AuthGuard from '@/components/AuthGuard';
 import Logo from '@/components/Logo';
 import Link from 'next/link';
 import toast from 'react-hot-toast';
+import { useLoadScript, GoogleMap, Marker } from '@react-google-maps/api';
 
 export default function SettingsPage() {
   return (
@@ -26,6 +27,21 @@ function SettingsContent() {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [searchRadius, setSearchRadius] = useState(10);
+  
+  // Location state for farmers
+  const [latitude, setLatitude] = useState<number | null>(null);
+  const [longitude, setLongitude] = useState<number | null>(null);
+  const [address, setAddress] = useState('');
+  const [savingLocation, setSavingLocation] = useState(false);
+  const addressInputRef = useRef<HTMLInputElement>(null);
+  const autocompleteRef = useRef<google.maps.places.Autocomplete | null>(null);
+  
+  // Google Maps API
+  const apiKey = process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY || '';
+  const { isLoaded: isMapsLoaded } = useLoadScript({
+    googleMapsApiKey: apiKey,
+    libraries: ['places'],
+  });
 
   useEffect(() => {
     const unsubscribe = onAuthStateChange(async (currentUser) => {
@@ -36,6 +52,12 @@ function SettingsContent() {
         if (profile?.searchRadiusKm) {
           setSearchRadius(profile.searchRadiusKm);
         }
+        // Load location for farmers
+        if (profile?.role === 'farmer' && profile?.location) {
+          setLatitude(profile.location.latitude);
+          setLongitude(profile.location.longitude);
+          setAddress(profile.location.address || '');
+        }
         setLoading(false);
       } else {
         router.push('/login');
@@ -44,6 +66,128 @@ function SettingsContent() {
 
     return () => unsubscribe();
   }, [router]);
+  
+  // Initialize Places Autocomplete
+  useEffect(() => {
+    if (isMapsLoaded && addressInputRef.current && !autocompleteRef.current && userProfile?.role === 'farmer') {
+      autocompleteRef.current = new google.maps.places.Autocomplete(addressInputRef.current, {
+        types: ['address'],
+      });
+
+      autocompleteRef.current.addListener('place_changed', () => {
+        const place = autocompleteRef.current?.getPlace();
+        if (place?.geometry?.location) {
+          setLatitude(place.geometry.location.lat());
+          setLongitude(place.geometry.location.lng());
+          setAddress(place.formatted_address || '');
+        }
+      });
+    }
+  }, [isMapsLoaded, userProfile?.role]);
+  
+  const useCurrentLocation = () => {
+    if (!navigator.geolocation) {
+      toast.error('Geolocation is not supported in this browser.');
+      return;
+    }
+    toast.loading('Getting your location...', { id: 'gps' });
+    navigator.geolocation.getCurrentPosition(
+      async (pos) => {
+        const lat = pos.coords.latitude;
+        const lng = pos.coords.longitude;
+        setLatitude(lat);
+        setLongitude(lng);
+        
+        // Reverse geocode to get address
+        try {
+          const response = await fetch('/api/reverse-geocode', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ latitude: lat, longitude: lng }),
+          });
+          if (response.ok) {
+            const data = await response.json();
+            if (data.address) {
+              setAddress(data.address);
+            }
+          }
+        } catch (error) {
+          console.error('Reverse geocoding failed:', error);
+        }
+        
+        toast.dismiss('gps');
+        toast.success('Location captured');
+      },
+      () => {
+        toast.dismiss('gps');
+        toast.error('Location permission denied');
+      }
+    );
+  };
+  
+  const geocodeAddress = async (addressString: string) => {
+    if (!addressString.trim()) return;
+    
+    try {
+      const response = await fetch('/api/geocode', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ address: addressString }),
+      });
+      if (response.ok) {
+        const data = await response.json();
+        if (data.latitude && data.longitude) {
+          setLatitude(data.latitude);
+          setLongitude(data.longitude);
+          if (data.formatted_address) {
+            setAddress(data.formatted_address);
+          }
+          toast.success('Address geocoded');
+        } else {
+          toast.error('Could not find coordinates for this address');
+        }
+      } else {
+        toast.error('Failed to geocode address. Please use GPS button or select from dropdown.');
+      }
+    } catch (error) {
+      console.error('Geocoding failed:', error);
+      toast.error('Failed to geocode address. Please use GPS button or select from dropdown.');
+    }
+  };
+  
+  const handleSaveLocation = async () => {
+    if (!user || userProfile?.role !== 'farmer') return;
+    if (!latitude || !longitude) {
+      toast.error('Please set a location first');
+      return;
+    }
+    
+    setSavingLocation(true);
+    try {
+      await updateUserProfile(user.uid, {
+        location: {
+          latitude,
+          longitude,
+          address: address || undefined,
+        },
+      });
+      // Update local profile state
+      setUserProfile({
+        ...userProfile,
+        location: {
+          latitude,
+          longitude,
+          address: address || undefined,
+        },
+      });
+      toast.success('Location saved successfully');
+    } catch (error) {
+      console.error('Error saving location:', error);
+      toast.error('Failed to save location');
+    } finally {
+      setSavingLocation(false);
+    }
+  };
 
   const handleSaveRadius = async () => {
     if (!user || userProfile?.role !== 'farmer') return;
@@ -150,31 +294,195 @@ function SettingsContent() {
           </div>
 
           {role === 'farmer' && (
-            <div className="mb-6 p-4 bg-[#234829] rounded-lg border border-[#234829]">
-              <label className="block text-sm font-medium text-[#92c99b] mb-3">
-                Search Radius: <span className="text-[#13ec37] font-bold">{searchRadius} km</span>
-              </label>
-              <input
-                type="range"
-                min={1}
-                max={20}
-                step={1}
-                value={searchRadius}
-                onChange={(e) => setSearchRadius(parseInt(e.target.value, 10))}
-                className="w-full mb-2 accent-[#13ec37]"
-              />
-              <div className="flex justify-between text-xs text-[#92c99b] mb-4">
-                <span>1km</span>
-                <span>20km</span>
+            <>
+              {/* Location Picker Section */}
+              <div className="mb-6 p-4 bg-[#234829] rounded-lg border border-[#234829]">
+                <div className="flex items-center gap-2 mb-4">
+                  <span className="material-symbols-outlined text-[#13ec37]">location_on</span>
+                  <label className="block text-sm font-medium text-[#92c99b]">
+                    Your Location
+                  </label>
+                </div>
+                <p className="text-xs text-[#92c99b]/70 mb-4">
+                  Update your location to see listings closer to you. You can use GPS, enter an address, or adjust the pin on the map.
+                </p>
+                
+                {/* Address Input */}
+                <div className="flex gap-2 mb-3">
+                  <input
+                    ref={addressInputRef}
+                    type="text"
+                    value={address}
+                    onChange={(e) => {
+                      setAddress(e.target.value);
+                      if (!autocompleteRef.current?.getPlace()) {
+                        setLatitude(null);
+                        setLongitude(null);
+                      }
+                    }}
+                    onBlur={() => {
+                      if (address && !latitude && !longitude) {
+                        geocodeAddress(address);
+                      }
+                    }}
+                    className="flex-1 px-4 py-2.5 rounded-lg border-none bg-[#102213] text-white placeholder:text-[#92c99b]/50 focus:ring-1 focus:ring-[#13ec37] focus:border-transparent transition-all text-sm"
+                    placeholder="Enter address or select from dropdown"
+                  />
+                  <button
+                    type="button"
+                    onClick={useCurrentLocation}
+                    className="px-4 py-2.5 bg-[#13ec37] hover:bg-[#11d632] text-[#112214] rounded-lg font-medium transition-all flex items-center gap-2"
+                  >
+                    <span className="material-symbols-outlined text-base">my_location</span>
+                    GPS
+                  </button>
+                </div>
+                
+                {latitude && longitude && (
+                  <p className="text-xs text-[#13ec37] mb-3">
+                    ✓ Coordinates: {latitude.toFixed(5)}, {longitude.toFixed(5)}
+                  </p>
+                )}
+                
+                {/* Interactive Map */}
+                {isMapsLoaded && (
+                  <div className="mb-4">
+                    <p className="text-xs text-[#92c99b] mb-2">
+                      Click on the map or drag the pin to adjust your location
+                    </p>
+                    <div className="w-full h-64 rounded-lg overflow-hidden border-2 border-[#234829]">
+                      <GoogleMap
+                        mapContainerStyle={{ width: '100%', height: '100%' }}
+                        center={
+                          latitude && longitude
+                            ? { lat: latitude, lng: longitude }
+                            : userProfile?.location?.latitude && userProfile?.location?.longitude
+                            ? { lat: userProfile.location.latitude, lng: userProfile.location.longitude }
+                            : { lat: 3.1390, lng: 101.6869 }
+                        }
+                        zoom={latitude && longitude ? 15 : 12}
+                        onClick={(e) => {
+                          if (e.latLng) {
+                            const lat = e.latLng.lat();
+                            const lng = e.latLng.lng();
+                            setLatitude(lat);
+                            setLongitude(lng);
+                            
+                            // Reverse geocode to get address
+                            fetch('/api/reverse-geocode', {
+                              method: 'POST',
+                              headers: { 'Content-Type': 'application/json' },
+                              body: JSON.stringify({ latitude: lat, longitude: lng }),
+                            })
+                              .then((res) => res.json())
+                              .then((data) => {
+                                if (data.address) {
+                                  setAddress(data.address);
+                                }
+                              })
+                              .catch((error) => {
+                                console.error('Reverse geocoding failed:', error);
+                              });
+                          }
+                        }}
+                        options={{
+                          disableDefaultUI: false,
+                          zoomControl: true,
+                          streetViewControl: false,
+                          mapTypeControl: true,
+                          fullscreenControl: false,
+                        }}
+                      >
+                        {latitude && longitude && (
+                          <Marker
+                            position={{ lat: latitude, lng: longitude }}
+                            draggable={true}
+                            onDragEnd={(e) => {
+                              if (e.latLng) {
+                                const lat = e.latLng.lat();
+                                const lng = e.latLng.lng();
+                                setLatitude(lat);
+                                setLongitude(lng);
+                                
+                                // Reverse geocode to get address
+                                fetch('/api/reverse-geocode', {
+                                  method: 'POST',
+                                  headers: { 'Content-Type': 'application/json' },
+                                  body: JSON.stringify({ latitude: lat, longitude: lng }),
+                                })
+                                  .then((res) => res.json())
+                                  .then((data) => {
+                                    if (data.address) {
+                                      setAddress(data.address);
+                                    }
+                                  })
+                                  .catch((error) => {
+                                    console.error('Reverse geocoding failed:', error);
+                                  });
+                              }
+                            }}
+                            icon={{
+                              path: google.maps.SymbolPath.CIRCLE,
+                              scale: 10,
+                              fillColor: '#13ec37',
+                              fillOpacity: 1,
+                              strokeColor: '#FFFFFF',
+                              strokeWeight: 3,
+                            }}
+                          />
+                        )}
+                      </GoogleMap>
+                    </div>
+                    {!latitude || !longitude ? (
+                      <p className="text-xs text-amber-400 mt-2 flex items-center gap-1">
+                        <span className="material-symbols-outlined text-sm">info</span>
+                        Please set location using address input, GPS button, or click on the map
+                      </p>
+                    ) : (
+                      <p className="text-xs text-[#13ec37] mt-2 flex items-center gap-1">
+                        <span className="material-symbols-outlined text-sm">check_circle</span>
+                        Location set. You can drag the pin or click on the map to adjust
+                      </p>
+                    )}
+                  </div>
+                )}
+                
+                <button
+                  onClick={handleSaveLocation}
+                  disabled={savingLocation || !latitude || !longitude}
+                  className="w-full px-6 py-2.5 bg-[#13ec37] hover:bg-[#11d632] text-[#112214] rounded-lg disabled:opacity-50 transition-all font-bold shadow-[0_0_15px_rgba(19,236,55,0.3)]"
+                >
+                  {savingLocation ? 'Saving Location...' : 'Save Location'}
+                </button>
               </div>
-              <button
-                onClick={handleSaveRadius}
-                disabled={saving}
-                className="px-6 py-2.5 bg-[#13ec37] hover:bg-[#11d632] text-[#112214] rounded-lg disabled:opacity-50 transition-all font-bold shadow-[0_0_15px_rgba(19,236,55,0.3)]"
-              >
-                {saving ? 'Saving...' : 'Save Radius'}
-              </button>
-            </div>
+              
+              {/* Search Radius Section */}
+              <div className="mb-6 p-4 bg-[#234829] rounded-lg border border-[#234829]">
+                <label className="block text-sm font-medium text-[#92c99b] mb-3">
+                  Search Radius: <span className="text-[#13ec37] font-bold">{searchRadius} km</span>
+                </label>
+                <input
+                  type="range"
+                  min={1}
+                  max={50}
+                  step={1}
+                  value={searchRadius}
+                  onChange={(e) => setSearchRadius(parseInt(e.target.value, 10))}
+                  className="w-full mb-2 accent-[#13ec37]"
+                />
+                <div className="flex justify-between text-xs text-[#92c99b] mb-4">
+                  <span>1km</span>
+                  <span>50km</span>
+                </div>
+                <button
+                  onClick={handleSaveRadius}
+                  disabled={saving}
+                  className="w-full px-6 py-2.5 bg-[#13ec37] hover:bg-[#11d632] text-[#112214] rounded-lg disabled:opacity-50 transition-all font-bold shadow-[0_0_15px_rgba(19,236,55,0.3)]"
+                >
+                  {saving ? 'Saving...' : 'Save Radius'}
+                </button>
+              </div>
+            </>
           )}
 
           <div className="border-t border-[#234829] pt-6">
