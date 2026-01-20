@@ -424,7 +424,7 @@ function OrdersContent() {
           farmerUid={user?.uid || ''}
           onRatingSubmitted={() => {
             // Reload orders to show updated rating
-            if (userProfile?.role) {
+            if (user && userProfile?.role) {
               loadOrders(user.uid, userProfile.role);
             }
           }}
