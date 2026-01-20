@@ -20,6 +20,7 @@ function LoginForm() {
   const [selectedRole, setSelectedRole] = useState<MarketplaceRole | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -304,15 +305,27 @@ function LoginForm() {
                       </a>
                     )}
                   </div>
-                  <input
-                    type="password"
-                    value={password}
-                    onChange={(e) => setPassword(e.target.value)}
-                    required
-                    className="block w-full rounded-lg border-gray-300 dark:border-none bg-white dark:bg-[#234829] text-slate-900 dark:text-white placeholder:text-slate-400 dark:placeholder:text-[#92c99b] focus:border-[#13ec37] focus:ring-[#13ec37] focus:ring-1 sm:text-sm h-12 px-4 shadow-sm"
-                    placeholder="••••••••"
-                    minLength={6}
-                  />
+                  <div className="relative">
+                    <input
+                      type={showPassword ? "text" : "password"}
+                      value={password}
+                      onChange={(e) => setPassword(e.target.value)}
+                      required
+                      className="block w-full rounded-lg border-gray-300 dark:border-none bg-white dark:bg-[#234829] text-slate-900 dark:text-white placeholder:text-slate-400 dark:placeholder:text-[#92c99b] focus:border-[#13ec37] focus:ring-[#13ec37] focus:ring-1 sm:text-sm h-12 px-4 pr-12 shadow-sm"
+                      placeholder="••••••••"
+                      minLength={6}
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setShowPassword(!showPassword)}
+                      className="absolute inset-y-0 right-0 flex items-center pr-3 text-slate-400 dark:text-[#92c99b] hover:text-slate-600 dark:hover:text-white transition-colors"
+                      aria-label={showPassword ? "Hide password" : "Show password"}
+                    >
+                      <span className="material-symbols-outlined text-xl">
+                        {showPassword ? "visibility_off" : "visibility"}
+                      </span>
+                    </button>
+                  </div>
                 </label>
 
                 <div className="flex flex-col gap-4 mt-2">
