@@ -9,6 +9,7 @@ import { UserProfile, MarketplaceListing, MarketplaceOrder } from '@/lib/types';
 import { getUserProfile } from '@/lib/userProfile';
 import { getListingsCollectionPath, getOrdersCollectionPath } from '@/lib/constants';
 import FarmerMapView from '@/components/FarmerMapView';
+import RatingDisplay from '@/components/RatingDisplay';
 import RoleGuard from '@/components/RoleGuard';
 import Link from 'next/link';
 import toast from 'react-hot-toast';
@@ -510,6 +511,15 @@ function GeneratorDashboardContent() {
               <div className="flex flex-col overflow-hidden">
                 <h1 className="text-white text-sm font-bold leading-tight truncate">{userProfile?.name || 'Restaurant'}</h1>
                 <p className="text-[#92c99b] text-[10px] font-normal uppercase tracking-wide">Restaurant Admin</p>
+                {userProfile?.averageRating && userProfile.averageRating > 0 && (
+                  <div className="mt-1.5">
+                    <RatingDisplay 
+                      rating={userProfile.averageRating} 
+                      totalRatings={userProfile.totalRatings}
+                      size="sm"
+                    />
+                  </div>
+                )}
               </div>
             </div>
 

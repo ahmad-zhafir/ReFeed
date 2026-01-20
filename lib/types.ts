@@ -53,6 +53,11 @@ export interface UserProfile {
    * Farmer-only preference: radius in km for feed matching.
    */
   searchRadiusKm?: number;
+  /**
+   * Rating fields (for generators)
+   */
+  averageRating?: number; // Calculated average (1-5)
+  totalRatings?: number; // Count of ratings received
   created_at: any;
 }
 
@@ -127,6 +132,21 @@ export interface MarketplaceOrder {
   latitude: number;
   longitude: number;
 
+  ratingId?: string; // Link to rating if rated
+
   createdAt: any; // Firestore Timestamp
  }
 
+export interface Rating {
+  id: string;
+  orderId: string; // Link to the completed order
+  listingId: string; // Link to the listing
+  generatorUid: string; // Who is being rated
+  farmerUid: string; // Who is giving the rating
+  
+  rating: number; // 1-5 stars
+  comment?: string; // Optional review text
+  
+  createdAt: any; // Firestore Timestamp
+  updatedAt?: any; // Firestore Timestamp
+}

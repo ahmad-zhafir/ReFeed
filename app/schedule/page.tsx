@@ -208,9 +208,6 @@ function ScheduleContent() {
                       <div className="px-4 py-3 border-b border-[#234829]">
                         <p className="text-sm font-semibold text-white">{userProfile.name}</p>
                         <p className="text-xs text-[#92c99b] mt-1">{userProfile.contact}</p>
-                        {userProfile.email && (
-                          <p className="text-xs text-[#92c99b] mt-1">{userProfile.email}</p>
-                        )}
                       </div>
                       <Link
                         href="/settings"

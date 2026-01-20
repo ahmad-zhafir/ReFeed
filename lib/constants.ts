@@ -31,3 +31,12 @@ export const getOrdersCollectionPath = (): string => {
   return `/artifacts/${APP_ID}/public/data/orders`;
 };
 
+// Marketplace: ratings collection
+export const getRatingsCollectionPath = (): string => {
+  if (process.env.NEXT_PUBLIC_USE_SIMPLE_COLLECTION_PATH === 'true') {
+    return 'ratings';
+  }
+
+  const APP_ID = process.env.NEXT_PUBLIC_APP_ID || 'default-app-id';
+  return `/artifacts/${APP_ID}/public/data/ratings`;
+};

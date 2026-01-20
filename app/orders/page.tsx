@@ -9,6 +9,7 @@ import { MarketplaceOrder, MarketplaceRole, UserProfile } from '@/lib/types';
 import { getUserProfile } from '@/lib/userProfile';
 import { getOrdersCollectionPath } from '@/lib/constants';
 import AuthGuard from '@/components/AuthGuard';
+import RatingModal from '@/components/RatingModal';
 import Link from 'next/link';
 import toast from 'react-hot-toast';
 
@@ -28,6 +29,8 @@ function OrdersContent() {
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState<'reserved' | 'completed' | 'cancelled'>('reserved');
   const [profileDropdownOpen, setProfileDropdownOpen] = useState(false);
+  const [ratingModalOpen, setRatingModalOpen] = useState(false);
+  const [selectedOrderForRating, setSelectedOrderForRating] = useState<MarketplaceOrder | null>(null);
   const dropdownRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -183,9 +186,6 @@ function OrdersContent() {
                       <div className="px-4 py-3 border-b border-[#234829]">
                         <p className="text-sm font-semibold text-white">{userProfile.name}</p>
                         <p className="text-xs text-[#92c99b] mt-1">{userProfile.contact}</p>
-                        {userProfile.email && (
-                          <p className="text-xs text-[#92c99b] mt-1">{userProfile.email}</p>
-                        )}
                       </div>
                       <Link
                         href="/settings"
@@ -377,9 +377,29 @@ function OrdersContent() {
                         )}
                       </div>
                       {order.status === 'completed' && (
-                        <p className="text-xs text-gray-500 dark:text-[#92c99b] mt-2">
-                          Completed on {order.createdAt?.toDate?.().toLocaleDateString()}
-                        </p>
+                        <div className="mt-3 flex items-center justify-between">
+                          <p className="text-xs text-gray-500 dark:text-[#92c99b]">
+                            Completed on {order.createdAt?.toDate?.().toLocaleDateString()}
+                          </p>
+                          {role === 'farmer' && !order.ratingId && (
+                            <button
+                              onClick={() => {
+                                setSelectedOrderForRating(order);
+                                setRatingModalOpen(true);
+                              }}
+                              className="px-3 py-1.5 bg-[#13ec37] hover:bg-[#11d832] text-[#102213] rounded-lg text-sm font-semibold transition-colors flex items-center gap-1.5"
+                            >
+                              <span className="material-symbols-outlined text-sm">star</span>
+                              Rate Order
+                            </button>
+                          )}
+                          {order.ratingId && (
+                            <span className="px-3 py-1.5 bg-yellow-500/10 text-yellow-500 rounded-lg text-sm font-medium flex items-center gap-1.5">
+                              <span className="material-symbols-outlined text-sm fill-yellow-500">star</span>
+                              Rated
+                            </span>
+                          )}
+                        </div>
                       )}
                     </div>
                   </div>
@@ -389,6 +409,27 @@ function OrdersContent() {
           </div>
         )}
       </main>
+
+      {/* Rating Modal */}
+      {selectedOrderForRating && (
+        <RatingModal
+          isOpen={ratingModalOpen}
+          onClose={() => {
+            setRatingModalOpen(false);
+            setSelectedOrderForRating(null);
+          }}
+          orderId={selectedOrderForRating.id}
+          listingTitle={selectedOrderForRating.title}
+          generatorName={selectedOrderForRating.generatorUid} // You might want to fetch generator name
+          farmerUid={user?.uid || ''}
+          onRatingSubmitted={() => {
+            // Reload orders to show updated rating
+            if (userProfile?.role) {
+              loadOrders(user.uid, userProfile.role);
+            }
+          }}
+        />
+      )}
     </div>
   );
 }

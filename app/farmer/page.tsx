@@ -3,12 +3,13 @@
 import { useState, useEffect, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import { getFirestoreDb, signOut, onAuthStateChange } from '@/lib/firebase';
-import { collection, query, where, onSnapshot } from 'firebase/firestore';
+import { collection, query, where, onSnapshot, doc, getDoc } from 'firebase/firestore';
 import { User } from 'firebase/auth';
 import { UserProfile, MarketplaceListing, MarketplaceOrder } from '@/lib/types';
 import { getUserProfile, updateUserProfile } from '@/lib/userProfile';
 import { getListingsCollectionPath, getOrdersCollectionPath } from '@/lib/constants';
 import RoleGuard from '@/components/RoleGuard';
+import RatingDisplay from '@/components/RatingDisplay';
 import Link from 'next/link';
 import toast from 'react-hot-toast';
 import FarmerListingMap from '@/components/FarmerListingMap';
@@ -51,6 +52,7 @@ function FarmerFeedContent() {
   const [priceFilter, setPriceFilter] = useState<{ min: string; max: string }>({ min: '', max: '' });
   const [sortBy, setSortBy] = useState<'distance' | 'price-low' | 'price-high' | 'date'>('distance');
   const [selectedListingId, setSelectedListingId] = useState<string | null>(null);
+  const [generatorProfiles, setGeneratorProfiles] = useState<Record<string, UserProfile>>({});
 
   // Helper functions
   const getNextPickupTime = (listing: MarketplaceListing): string => {
@@ -167,12 +169,29 @@ function FarmerFeedContent() {
     const listingsRef = collection(db, getListingsCollectionPath());
     const q = query(listingsRef, where('status', '==', 'live'));
 
-    const unsubscribe = onSnapshot(q, (snapshot) => {
+    const unsubscribe = onSnapshot(q, async (snapshot) => {
       const listingsData = snapshot.docs.map((doc) => ({
         id: doc.id,
         ...doc.data(),
       })) as MarketplaceListing[];
       setListings(listingsData);
+
+      // Load generator profiles for ratings
+      const profiles: Record<string, UserProfile> = {};
+      const uniqueGeneratorUids = Array.from(new Set(listingsData.map(l => l.generatorUid)));
+      
+      for (const generatorUid of uniqueGeneratorUids) {
+        try {
+          const profile = await getUserProfile(generatorUid);
+          if (profile) {
+            profiles[generatorUid] = profile;
+          }
+        } catch (error) {
+          console.error(`Error loading profile for generator ${generatorUid}:`, error);
+        }
+      }
+      
+      setGeneratorProfiles(profiles);
     });
 
     return () => unsubscribe();
@@ -720,12 +739,23 @@ function FarmerFeedContent() {
                         ></div>
                         <div className="absolute inset-0 bg-gradient-to-t from-[#112214] to-transparent opacity-80"></div>
                         
-                        {/* VERIFIED Badge */}
-                        <div className="absolute top-3 right-3">
+                        {/* VERIFIED Badge & Rating */}
+                        <div className="absolute top-3 right-3 flex flex-col gap-2 items-end">
                           <span className="inline-flex items-center gap-1 px-2 py-1 rounded bg-[#13ec37] text-[#112213] text-xs font-bold shadow-lg">
                             <span className="material-symbols-outlined text-[14px]">verified</span>
                             VERIFIED
                           </span>
+                          {generatorProfiles[listing.generatorUid]?.averageRating && 
+                           generatorProfiles[listing.generatorUid].averageRating! > 0 && (
+                            <div className="px-2 py-1 rounded bg-black/60 backdrop-blur-sm border border-white/10">
+                              <RatingDisplay 
+                                rating={generatorProfiles[listing.generatorUid].averageRating!}
+                                totalRatings={generatorProfiles[listing.generatorUid].totalRatings}
+                                size="sm"
+                                showCount={false}
+                              />
+                            </div>
+                          )}
                         </div>
 
                         {/* Pickup Time */}
