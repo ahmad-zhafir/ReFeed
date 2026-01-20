@@ -40,6 +40,7 @@ function ListingDetailContent() {
   const [userProfile, setUserProfile] = useState<UserProfile | null>(null);
   const [loading, setLoading] = useState(true);
   const [distance, setDistance] = useState<number | null>(null);
+  const [selectedImageIndex, setSelectedImageIndex] = useState(0);
 
   useEffect(() => {
     const unsubscribe = onAuthStateChange(async (user) => {
@@ -128,7 +129,84 @@ function ListingDetailContent() {
 
       <div className="container mx-auto px-6 py-8 max-w-4xl">
         <div className="bg-white rounded-xl shadow-lg overflow-hidden border border-gray-100">
-          <img src={listing.imageUrl} alt={listing.title} className="w-full h-64 md:h-96 object-cover" />
+          {/* Image Gallery */}
+          <div className="relative w-full h-64 md:h-96 bg-gray-100">
+            {listing.imageUrls && listing.imageUrls.length > 0 ? (
+              <>
+                <img 
+                  src={listing.imageUrls[selectedImageIndex] || listing.imageUrl} 
+                  alt={listing.title} 
+                  className="w-full h-full object-cover"
+                  onError={(e) => {
+                    const target = e.target as HTMLImageElement;
+                    target.src = listing.imageUrl || 'https://via.placeholder.com/800x400';
+                  }}
+                />
+                {listing.imageUrls.length > 1 && (
+                  <>
+                    <button
+                      onClick={() => setSelectedImageIndex((prev) => (prev > 0 ? prev - 1 : listing.imageUrls!.length - 1))}
+                      className="absolute left-4 top-1/2 -translate-y-1/2 bg-black/50 hover:bg-black/70 text-white rounded-full p-2 transition-colors"
+                    >
+                      <span className="material-symbols-outlined">chevron_left</span>
+                    </button>
+                    <button
+                      onClick={() => setSelectedImageIndex((prev) => (prev < listing.imageUrls!.length - 1 ? prev + 1 : 0))}
+                      className="absolute right-4 top-1/2 -translate-y-1/2 bg-black/50 hover:bg-black/70 text-white rounded-full p-2 transition-colors"
+                    >
+                      <span className="material-symbols-outlined">chevron_right</span>
+                    </button>
+                    <div className="absolute bottom-4 left-1/2 -translate-x-1/2 flex gap-2">
+                      {listing.imageUrls.map((_, index) => (
+                        <button
+                          key={index}
+                          onClick={() => setSelectedImageIndex(index)}
+                          className={`w-2 h-2 rounded-full transition-all ${
+                            selectedImageIndex === index
+                              ? 'bg-white w-8'
+                              : 'bg-white/50 hover:bg-white/75'
+                          }`}
+                        />
+                      ))}
+                    </div>
+                  </>
+                )}
+              </>
+            ) : (
+              <img 
+                src={listing.imageUrl} 
+                alt={listing.title} 
+                className="w-full h-full object-cover"
+                onError={(e) => {
+                  const target = e.target as HTMLImageElement;
+                  target.src = 'https://via.placeholder.com/800x400';
+                }}
+              />
+            )}
+          </div>
+          
+          {/* Thumbnail Gallery */}
+          {listing.imageUrls && listing.imageUrls.length > 1 && (
+            <div className="flex gap-2 p-4 bg-gray-50 overflow-x-auto border-b border-gray-100">
+              {[listing.imageUrl, ...listing.imageUrls].map((url, index) => (
+                <button
+                  key={index}
+                  onClick={() => setSelectedImageIndex(Math.max(0, index - 1))}
+                  className={`flex-shrink-0 w-20 h-20 rounded-lg overflow-hidden border-2 transition-all ${
+                    (index === 0 && selectedImageIndex === 0) || (index > 0 && selectedImageIndex === index - 1)
+                      ? 'border-emerald-600'
+                      : 'border-transparent hover:border-gray-300'
+                  }`}
+                >
+                  <img 
+                    src={url} 
+                    alt={`Thumbnail ${index + 1}`} 
+                    className="w-full h-full object-cover"
+                  />
+                </button>
+              ))}
+            </div>
+          )}
           
           <div className="p-8">
             <div className="flex justify-between items-start mb-4">

@@ -92,6 +92,7 @@ export interface MarketplaceListing {
   latitude: number;
   longitude: number;
   imageUrl: string;
+  imageUrls?: string[]; // Support multiple images (optional for backward compatibility)
 
   pickupWindows: MarketplacePickupWindow[];
 

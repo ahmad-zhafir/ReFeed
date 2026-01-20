@@ -13,7 +13,7 @@ import RoleGuard from '@/components/RoleGuard';
 import Logo from '@/components/Logo';
 import Link from 'next/link';
 import toast from 'react-hot-toast';
-import { useLoadScript } from '@react-google-maps/api';
+import { useLoadScript, GoogleMap, Marker } from '@react-google-maps/api';
 
 const WASTE_CATEGORIES = [
   'Vegetative Waste',
@@ -49,6 +49,8 @@ function NewListingContent() {
   const [currency, setCurrency] = useState('MYR');
   const [imageFile, setImageFile] = useState<File | null>(null);
   const [imagePreview, setImagePreview] = useState<string | null>(null);
+  const [imageFiles, setImageFiles] = useState<File[]>([]);
+  const [imagePreviews, setImagePreviews] = useState<string[]>([]);
   const [address, setAddress] = useState('');
   const [latitude, setLatitude] = useState<number | null>(null);
   const [longitude, setLongitude] = useState<number | null>(null);
@@ -119,14 +121,50 @@ function NewListingContent() {
   }, [isMapsLoaded]);
 
   const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (file) {
-      setImageFile(file);
-      const reader = new FileReader();
-      reader.onloadend = () => {
-        setImagePreview(reader.result as string);
-      };
-      reader.readAsDataURL(file);
+    e.preventDefault();
+    e.stopPropagation();
+    const files = Array.from(e.target.files || []);
+    if (files.length > 0) {
+      if (files.length === 1) {
+        // Single image
+        const file = files[0];
+        setImageFile(file);
+        const reader = new FileReader();
+        reader.onloadend = () => {
+          setImagePreview(reader.result as string);
+        };
+        reader.readAsDataURL(file);
+        setImageFiles([file]);
+        setImagePreviews([URL.createObjectURL(file)]);
+      } else {
+        // Multiple images
+        const newFiles = [...imageFiles, ...files];
+        setImageFiles(newFiles);
+        const newPreviews = newFiles.map(file => URL.createObjectURL(file));
+        setImagePreviews(newPreviews);
+        // Set first image as primary
+        if (newFiles.length > 0) {
+          setImageFile(newFiles[0]);
+          setImagePreview(newPreviews[0]);
+        }
+      }
+    }
+    if (e.target) {
+      e.target.value = '';
+    }
+  };
+
+  const removeImage = (index: number) => {
+    const newFiles = imageFiles.filter((_, i) => i !== index);
+    const newPreviews = imagePreviews.filter((_, i) => i !== index);
+    setImageFiles(newFiles);
+    setImagePreviews(newPreviews);
+    if (newFiles.length > 0) {
+      setImageFile(newFiles[0]);
+      setImagePreview(newPreviews[0]);
+    } else {
+      setImageFile(null);
+      setImagePreview(null);
     }
   };
 
@@ -335,7 +373,7 @@ function NewListingContent() {
   };
 
   const handleSubmit = async () => {
-    if (!category || !title || !price || !imageFile || !address || !latitude || !longitude || pickupWindows.length === 0) {
+    if (!category || !title || !price || (!imageFile && imageFiles.length === 0) || !address || !latitude || !longitude || pickupWindows.length === 0) {
       toast.error('Please fill all required fields');
       return;
     }
@@ -345,10 +383,24 @@ function NewListingContent() {
       const db = getFirestoreDb();
       const storage = getFirebaseStorage();
 
-      // Upload image
-      const imageRef = ref(storage, `listings/${user!.uid}/${Date.now()}_${imageFile.name}`);
-      await uploadBytes(imageRef, imageFile);
-      const imageUrl = await getDownloadURL(imageRef);
+      // Upload primary image (required)
+      const primaryImageFile = imageFiles[0] || imageFile!;
+      const primaryImageRef = ref(storage, `listings/${user!.uid}/${Date.now()}_${primaryImageFile.name}`);
+      await uploadBytes(primaryImageRef, primaryImageFile);
+      const imageUrl = await getDownloadURL(primaryImageRef);
+
+      // Upload additional images if any
+      let imageUrls: string[] | undefined;
+      if (imageFiles.length > 1) {
+        imageUrls = [];
+        for (let i = 1; i < imageFiles.length; i++) {
+          const file = imageFiles[i];
+          const imageRef = ref(storage, `listings/${user!.uid}/${Date.now()}_${i}_${file.name}`);
+          await uploadBytes(imageRef, file);
+          const url = await getDownloadURL(imageRef);
+          imageUrls.push(url);
+        }
+      }
 
       // Create listing - filter out undefined values (Firestore doesn't allow undefined)
       const listingData: any = {
@@ -367,6 +419,11 @@ function NewListingContent() {
         status: 'live', // Auto-approve
         createdAt: Timestamp.now(),
       };
+
+      // Add multiple images if available
+      if (imageUrls && imageUrls.length > 0) {
+        listingData.imageUrls = imageUrls;
+      }
 
       // Only add optional fields if they have values
       if (weightKg) {
@@ -394,457 +451,713 @@ function NewListingContent() {
     }
   };
 
+  // Calculate progress percentage
+  const progressPercentage = ((step - 1) / 3) * 100;
+  const stepNames = ['Category', 'Photo', 'Details', 'Schedule'];
+  const currentStepName = stepNames[step - 1] || 'Category';
+
   return (
-    <div className="min-h-screen bg-gradient-to-br from-white via-green-50 to-emerald-100">
-      <header className="bg-white backdrop-blur-sm border-b border-gray-100 sticky top-0 z-50 shadow-sm">
-        <div className="container mx-auto px-6 py-4">
-          <div className="flex justify-between items-center">
-            <Link href="/generator" className="flex items-center gap-3">
-              <Logo className="w-10 h-10" />
-              <h1 className="text-3xl font-bold bg-gradient-to-r from-green-600 to-emerald-600 bg-clip-text text-transparent" style={{ fontFamily: '"Lilita One", sans-serif' }}>
-                ReFeed
-              </h1>
-            </Link>
-          </div>
+    <div className="font-display bg-[#f6f8f6] dark:bg-[#102213] text-slate-900 dark:text-white antialiased min-h-screen flex flex-col">
+      {/* Header */}
+      <header className="sticky top-0 z-50 w-full border-b border-solid border-gray-200 dark:border-[#234829] bg-white/80 dark:bg-[#102213]/80 backdrop-blur-md">
+        <div className="px-6 md:px-10 py-3 flex items-center justify-between w-full">
+          <Link href="/generator" className="flex items-center gap-4 text-slate-900 dark:text-white cursor-pointer">
+            <div className="size-8 text-[#13ec37]">
+              <svg fill="none" viewBox="0 0 48 48" xmlns="http://www.w3.org/2000/svg">
+                <path d="M42.4379 44C42.4379 44 36.0744 33.9038 41.1692 24C46.8624 12.9336 42.2078 4 42.2078 4L7.01134 4C7.01134 4 11.6577 12.932 5.96912 23.9969C0.876273 33.9029 7.27094 44 7.27094 44L42.4379 44Z" fill="currentColor"></path>
+              </svg>
+            </div>
+            <h2 className="text-xl font-bold leading-tight tracking-[-0.015em]">ReFeed</h2>
+          </Link>
         </div>
       </header>
 
-      <div className="container mx-auto px-6 py-8 max-w-3xl">
-        {/* Progress Steps */}
-        <div className="mb-8">
-          <div className="relative">
-            {/* Circles and connecting lines */}
-            <div className="flex items-center">
-              {[1, 2, 3, 4].map((s) => (
-                <div key={s} className="flex items-center" style={{ flex: s === 4 ? '0 0 auto' : '1 1 0' }}>
-                  <div className="relative flex flex-col items-center">
-                    <div className={`w-10 h-10 rounded-full flex items-center justify-center font-bold ${
-                      step >= s ? 'bg-green-600 text-white' : 'bg-gray-200 text-gray-600'
-                    }`}>
-                      {s}
+      {/* Main Content */}
+      <main className="flex-1 w-full max-w-[1280px] mx-auto px-4 md:px-10 py-8">
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 lg:gap-12">
+          {/* Left Column: Form Wizard */}
+          <div className="lg:col-span-8 flex flex-col gap-6">
+            {/* Header Section */}
+            <div className="flex flex-col gap-2">
+              <div className="flex items-center gap-2 text-[#92c99b] text-sm font-medium">
+                <span className="material-symbols-outlined text-lg">arrow_back</span>
+                <Link href="/generator" className="hover:underline">Back to Dashboard</Link>
+              </div>
+              <h1 className="text-slate-900 dark:text-white tracking-tight text-3xl md:text-[32px] font-bold leading-tight">New Waste Listing</h1>
+              <p className="text-slate-500 dark:text-[#92c99b] text-base">Post your organic waste for farmers to collect. Ensure details are accurate for successful transactions.</p>
+            </div>
+
+            {/* Progress Bar */}
+            <div className="flex flex-col gap-3 py-2">
+              <div className="flex gap-6 justify-between items-end">
+                <p className="text-slate-900 dark:text-white text-base font-medium leading-normal">
+                  Step {step} of 4: {currentStepName}
+                </p>
+                <span className="text-slate-500 dark:text-[#92c99b] text-sm">{Math.round(progressPercentage)}% Completed</span>
+              </div>
+              <div className="rounded-full bg-gray-200 dark:bg-[#32673b] h-2 w-full overflow-hidden">
+                <div className="h-full bg-[#13ec37] rounded-full transition-all duration-500" style={{ width: `${progressPercentage}%` }}></div>
+              </div>
+            </div>
+
+            {/* Form Card */}
+            <div className="bg-white dark:bg-[#1c2e20] border border-gray-200 dark:border-[#234829] rounded-xl p-6 md:p-8 shadow-sm flex flex-col gap-8">
+              {/* Step 1: Category */}
+              {step === 1 && (
+                <>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <div className="flex flex-col gap-2">
+                      <label className="text-slate-900 dark:text-white text-base font-medium leading-normal">Waste Category</label>
+                      <div className="relative">
+                        <select
+                          value={category}
+                          onChange={(e) => {
+                            setCategory(e.target.value);
+                            if (e.target.value) {
+                              setTimeout(() => setStep(2), 300);
+                            }
+                          }}
+                          className="w-full appearance-none rounded-lg bg-gray-50 dark:bg-[#102213] border border-gray-300 dark:border-[#234829] text-slate-900 dark:text-white h-14 px-4 pr-10 focus:outline-none focus:ring-2 focus:ring-[#13ec37] focus:border-transparent transition-all"
+                        >
+                          <option disabled value="">Select classification</option>
+                          {WASTE_CATEGORIES.map((cat) => (
+                            <option key={cat} value={cat}>{cat}</option>
+                          ))}
+                        </select>
+                        <div className="absolute inset-y-0 right-0 flex items-center px-4 pointer-events-none text-[#13ec37]">
+                          <span className="material-symbols-outlined">expand_more</span>
+                        </div>
+                      </div>
+                      <p className="text-xs text-slate-500 dark:text-[#92c99b] pl-1">Choose the primary composition of the waste.</p>
                     </div>
-                    <span className="text-xs text-gray-600 mt-2 text-center whitespace-nowrap">
-                      {s === 1 ? 'Category' : s === 2 ? 'Photo' : s === 3 ? 'Details' : 'Schedule'}
-                    </span>
                   </div>
-                  {s < 4 && (
-                    <div className={`flex-1 h-1 mx-2 ${step > s ? 'bg-green-600' : 'bg-gray-200'}`} style={{ minWidth: '20px' }} />
-                  )}
-                </div>
-              ))}
-            </div>
-          </div>
-        </div>
+                </>
+              )}
 
-        {/* Step 1: Category */}
-        {step === 1 && (
-          <div className="bg-white rounded-xl shadow-lg p-8">
-            <h2 className="text-2xl font-bold text-gray-900 mb-6">Select Waste Category</h2>
-            <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
-              {WASTE_CATEGORIES.map((cat) => (
-                <button
-                  key={cat}
-                  onClick={() => {
-                    setCategory(cat);
-                    setTimeout(() => setStep(2), 300);
-                  }}
-                  className={`p-4 rounded-xl border-2 transition-all ${
-                    category === cat
-                      ? 'border-green-600 bg-green-50'
-                      : 'border-gray-200 hover:border-green-300'
-                  }`}
-                >
-                  <p className="font-semibold text-gray-900">{cat}</p>
-                </button>
-              ))}
-            </div>
-          </div>
-        )}
+              {/* Step 2: Photo */}
+              {step === 2 && (
+                <>
+                  <div className="flex flex-col gap-4">
+                    <div className="flex justify-between items-center">
+                      <label className="text-slate-900 dark:text-white text-base font-medium leading-normal">Photo Verification</label>
+                      <span className="text-xs bg-[#13ec37]/20 text-[#13ec37] px-2 py-1 rounded font-medium">Required</span>
+                    </div>
+                    <input
+                      ref={fileInputRef}
+                      accept="image/*"
+                      className="hidden"
+                      type="file"
+                      multiple
+                      onChange={handleImageChange}
+                    />
+                    {imagePreviews.length > 0 || imagePreview ? (
+                      <div className="flex flex-col gap-4">
+                        {/* Primary Image Preview */}
+                        <div className="relative border-2 border-dashed border-[#13ec37] rounded-xl bg-gray-50 dark:bg-[#102213] p-4">
+                          <img 
+                            src={imagePreviews[0] || imagePreview || ''} 
+                            alt="Primary Preview" 
+                            className="w-full h-64 object-cover rounded-lg" 
+                          />
+                        </div>
+                        
+                        {/* Additional Images Grid */}
+                        {imagePreviews.length > 1 && (
+                          <div className="grid grid-cols-4 gap-3">
+                            {imagePreviews.slice(1).map((preview, index) => (
+                              <div key={index} className="relative group">
+                                <img 
+                                  src={preview} 
+                                  alt={`Preview ${index + 2}`} 
+                                  className="w-full h-24 object-cover rounded-lg border-2 border-gray-300 dark:border-[#234829]" 
+                                />
+                                <button
+                                  type="button"
+                                  onClick={() => removeImage(index + 1)}
+                                  className="absolute top-1 right-1 bg-red-500/90 hover:bg-red-600 text-white rounded-full p-1 transition-colors opacity-0 group-hover:opacity-100"
+                                  title="Remove"
+                                >
+                                  <span className="material-symbols-outlined text-sm">close</span>
+                                </button>
+                              </div>
+                            ))}
+                          </div>
+                        )}
+                        
+                        {/* Actions */}
+                        <div className="flex gap-3">
+                          <button
+                            type="button"
+                            onClick={(e) => {
+                              e.preventDefault();
+                              e.stopPropagation();
+                              fileInputRef.current?.click();
+                            }}
+                            className="flex items-center gap-2 px-4 py-2 bg-[#234829] hover:bg-[#32673b] text-white rounded-lg font-medium transition-colors"
+                          >
+                            <span className="material-symbols-outlined text-lg">add</span>
+                            Add More Images
+                          </button>
+                          <button
+                            type="button"
+                            onClick={(e) => {
+                              e.preventDefault();
+                              e.stopPropagation();
+                              setImagePreviews([]);
+                              setImageFiles([]);
+                              setImagePreview(null);
+                              setImageFile(null);
+                              if (fileInputRef.current) {
+                                fileInputRef.current.value = '';
+                              }
+                            }}
+                            className="flex items-center gap-2 px-4 py-2 bg-red-500/90 hover:bg-red-600 text-white rounded-lg font-medium transition-colors"
+                          >
+                            <span className="material-symbols-outlined text-lg">delete</span>
+                            Clear All
+                          </button>
+                        </div>
+                      </div>
+                    ) : (
+                      <div
+                        onClick={(e) => {
+                          e.preventDefault();
+                          e.stopPropagation();
+                          fileInputRef.current?.click();
+                        }}
+                        className="relative border-2 border-dashed border-gray-300 dark:border-[#32673b] hover:border-[#13ec37] dark:hover:border-[#13ec37] rounded-xl bg-gray-50 dark:bg-[#102213] p-8 flex flex-col items-center justify-center text-center transition-colors cursor-pointer group"
+                      >
+                        <div className="size-16 rounded-full bg-[#13ec37]/10 flex items-center justify-center mb-4 group-hover:scale-110 transition-transform">
+                          <span className="material-symbols-outlined text-[#13ec37] text-3xl">add_a_photo</span>
+                        </div>
+                        <h3 className="text-slate-900 dark:text-white font-medium text-lg mb-1">Click to upload or drag and drop</h3>
+                        <p className="text-slate-500 dark:text-[#92c99b] text-sm max-w-xs">SVG, PNG, JPG or GIF. You can upload multiple images (first image will be primary).</p>
+                      </div>
+                    )}
+                  </div>
+                </>
+              )}
 
-        {/* Step 2: Photo */}
-        {step === 2 && (
-          <div className="bg-white rounded-xl shadow-lg p-8">
-            <h2 className="text-2xl font-bold text-gray-900 mb-6">Upload Photo Evidence</h2>
-            <div className="space-y-4">
-              {imagePreview ? (
-                <div className="relative">
-                  <img src={imagePreview} alt="Preview" className="w-full h-64 object-cover rounded-lg" />
+              {/* Step 3: Details */}
+              {step === 3 && (
+                <>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <div className="flex flex-col gap-2">
+                      <label className="text-slate-900 dark:text-white text-base font-medium leading-normal">Title *</label>
+                      <input
+                        type="text"
+                        value={title}
+                        onChange={(e) => setTitle(e.target.value)}
+                        className="w-full rounded-lg bg-gray-50 dark:bg-[#102213] border border-gray-300 dark:border-[#234829] text-slate-900 dark:text-white h-14 px-4 focus:outline-none focus:ring-2 focus:ring-[#13ec37] focus:border-transparent transition-all placeholder:text-slate-400 dark:placeholder:text-[#92c99b]/50"
+                        placeholder="e.g., Fresh vegetable scraps"
+                      />
+                      <p className="text-xs text-slate-500 dark:text-[#92c99b] pl-1">A clear, descriptive title for your listing.</p>
+                    </div>
+                    <div className="flex flex-col gap-2">
+                      <label className="text-slate-900 dark:text-white text-base font-medium leading-normal">Estimated Weight</label>
+                      <div className="relative">
+                        <input
+                          type="number"
+                          value={weightKg}
+                          onChange={(e) => setWeightKg(e.target.value)}
+                          className="w-full rounded-lg bg-gray-50 dark:bg-[#102213] border border-gray-300 dark:border-[#234829] text-slate-900 dark:text-white h-14 px-4 pr-12 focus:outline-none focus:ring-2 focus:ring-[#13ec37] focus:border-transparent transition-all placeholder:text-slate-400 dark:placeholder:text-[#92c99b]/50"
+                          placeholder="0.00"
+                        />
+                        <div className="absolute inset-y-0 right-0 flex items-center px-4 pointer-events-none">
+                          <span className="text-slate-500 dark:text-[#92c99b] font-medium">kg</span>
+                        </div>
+                      </div>
+                      <p className="text-xs text-slate-500 dark:text-[#92c99b] pl-1">Use the kitchen scale for accuracy.</p>
+                    </div>
+                  </div>
+                  <div className="flex flex-col gap-2">
+                    <label className="text-slate-900 dark:text-white text-base font-medium leading-normal">Price *</label>
+                    <div className="relative">
+                      <input
+                        type="number"
+                        value={price}
+                        onChange={(e) => setPrice(e.target.value)}
+                        className="w-full rounded-lg bg-gray-50 dark:bg-[#102213] border border-gray-300 dark:border-[#234829] text-slate-900 dark:text-white h-14 px-4 pr-16 focus:outline-none focus:ring-2 focus:ring-[#13ec37] focus:border-transparent transition-all placeholder:text-slate-400 dark:placeholder:text-[#92c99b]/50"
+                        placeholder="0.00"
+                        step="0.01"
+                      />
+                      <div className="absolute inset-y-0 right-0 flex items-center px-4 pointer-events-none">
+                        <span className="text-slate-500 dark:text-[#92c99b] font-medium">{currency}</span>
+                      </div>
+                    </div>
+                    <p className="text-xs text-slate-500 dark:text-[#92c99b] pl-1">Price for this waste listing.</p>
+                  </div>
+                  <div className="flex flex-col gap-2">
+                    <label className="text-slate-900 dark:text-white text-base font-medium leading-normal">Notes</label>
+                    <textarea
+                      value={notes}
+                      onChange={(e) => setNotes(e.target.value)}
+                      className="w-full rounded-lg bg-gray-50 dark:bg-[#102213] border border-gray-300 dark:border-[#234829] text-slate-900 dark:text-white px-4 py-3 focus:outline-none focus:ring-2 focus:ring-[#13ec37] focus:border-transparent transition-all placeholder:text-slate-400 dark:placeholder:text-[#92c99b]/50"
+                      rows={3}
+                      placeholder="Additional details about the waste..."
+                    />
+                  </div>
+                  <hr className="border-gray-200 dark:border-[#234829]" />
+                  <div className="flex flex-col gap-4">
+                    <div className="flex flex-col gap-2">
+                      <label className="text-slate-900 dark:text-white text-base font-medium leading-normal">Pickup Address *</label>
+                      <div className="flex gap-2">
+                        <input
+                          ref={addressInputRef}
+                          type="text"
+                          value={address}
+                          onChange={(e) => {
+                            setAddress(e.target.value);
+                            if (!autocompleteRef.current?.getPlace()) {
+                              setLatitude(null);
+                              setLongitude(null);
+                            }
+                          }}
+                          onBlur={() => {
+                            if (address && !latitude && !longitude) {
+                              geocodeAddress(address);
+                            }
+                          }}
+                          className="flex-1 rounded-lg bg-gray-50 dark:bg-[#102213] border border-gray-300 dark:border-[#234829] text-slate-900 dark:text-white h-14 px-4 focus:outline-none focus:ring-2 focus:ring-[#13ec37] focus:border-transparent transition-all placeholder:text-slate-400 dark:placeholder:text-[#92c99b]/50"
+                          placeholder="Enter address or select from dropdown"
+                        />
+                        <button
+                          type="button"
+                          onClick={useCurrentLocation}
+                          className="px-4 py-2 bg-[#13ec37] hover:bg-[#11d632] text-[#112214] rounded-lg font-medium transition-all flex items-center gap-2"
+                        >
+                          <span className="material-symbols-outlined text-lg">my_location</span>
+                          Use GPS
+                        </button>
+                      </div>
+                      {latitude && longitude && (
+                        <p className="text-xs text-[#13ec37] mt-1">
+                          ✓ Coordinates: {latitude.toFixed(5)}, {longitude.toFixed(5)}
+                        </p>
+                      )}
+                      {address && (!latitude || !longitude) && (
+                        <p className="text-xs text-red-400 mt-1">
+                          Please use the "Use GPS" button or select an address from the dropdown to get coordinates.
+                        </p>
+                      )}
+                    </div>
+
+                    {/* Interactive Map */}
+                    {isMapsLoaded && (
+                      <div className="flex flex-col gap-2">
+                        <label className="text-slate-900 dark:text-white text-base font-medium leading-normal">Adjust Pin Location</label>
+                        <p className="text-xs text-slate-500 dark:text-[#92c99b] mb-2">
+                          Click on the map or drag the pin to set the exact pickup location
+                        </p>
+                        <div className="w-full h-64 md:h-80 rounded-lg overflow-hidden border-2 border-gray-300 dark:border-[#234829]">
+                          <GoogleMap
+                            mapContainerStyle={{ width: '100%', height: '100%' }}
+                            center={
+                              latitude && longitude
+                                ? { lat: latitude, lng: longitude }
+                                : userProfile?.location?.latitude && userProfile?.location?.longitude
+                                ? { lat: userProfile.location.latitude, lng: userProfile.location.longitude }
+                                : { lat: 3.1390, lng: 101.6869 }
+                            }
+                            zoom={latitude && longitude ? 15 : 12}
+                            onClick={(e) => {
+                              if (e.latLng) {
+                                const lat = e.latLng.lat();
+                                const lng = e.latLng.lng();
+                                setLatitude(lat);
+                                setLongitude(lng);
+                                
+                                // Reverse geocode to get address
+                                fetch('/api/reverse-geocode', {
+                                  method: 'POST',
+                                  headers: { 'Content-Type': 'application/json' },
+                                  body: JSON.stringify({ latitude: lat, longitude: lng }),
+                                })
+                                  .then((res) => res.json())
+                                  .then((data) => {
+                                    if (data.address) {
+                                      setAddress(data.address);
+                                    }
+                                  })
+                                  .catch((error) => {
+                                    console.error('Reverse geocoding failed:', error);
+                                  });
+                              }
+                            }}
+                            options={{
+                              disableDefaultUI: false,
+                              zoomControl: true,
+                              streetViewControl: false,
+                              mapTypeControl: true,
+                              fullscreenControl: false,
+                            }}
+                          >
+                            {latitude && longitude && (
+                              <Marker
+                                position={{ lat: latitude, lng: longitude }}
+                                draggable={true}
+                                onDragEnd={(e) => {
+                                  if (e.latLng) {
+                                    const lat = e.latLng.lat();
+                                    const lng = e.latLng.lng();
+                                    setLatitude(lat);
+                                    setLongitude(lng);
+                                    
+                                    // Reverse geocode to get address
+                                    fetch('/api/reverse-geocode', {
+                                      method: 'POST',
+                                      headers: { 'Content-Type': 'application/json' },
+                                      body: JSON.stringify({ latitude: lat, longitude: lng }),
+                                    })
+                                      .then((res) => res.json())
+                                      .then((data) => {
+                                        if (data.address) {
+                                          setAddress(data.address);
+                                        }
+                                      })
+                                      .catch((error) => {
+                                        console.error('Reverse geocoding failed:', error);
+                                      });
+                                  }
+                                }}
+                                icon={{
+                                  path: google.maps.SymbolPath.CIRCLE,
+                                  scale: 10,
+                                  fillColor: '#13ec37',
+                                  fillOpacity: 1,
+                                  strokeColor: '#FFFFFF',
+                                  strokeWeight: 3,
+                                }}
+                              />
+                            )}
+                          </GoogleMap>
+                        </div>
+                        {!latitude || !longitude ? (
+                          <p className="text-xs text-amber-500 dark:text-amber-400 flex items-center gap-1">
+                            <span className="material-symbols-outlined text-sm">info</span>
+                            Please set location using address input, GPS button, or click on the map
+                          </p>
+                        ) : (
+                          <p className="text-xs text-[#13ec37] flex items-center gap-1">
+                            <span className="material-symbols-outlined text-sm">check_circle</span>
+                            Location set. You can drag the pin or click on the map to adjust
+                          </p>
+                        )}
+                      </div>
+                    )}
+                  </div>
+                </>
+              )}
+
+              {/* Step 4: Schedule */}
+              {step === 4 && (
+                <>
+                  <div className="flex flex-col gap-2 mb-4">
+                    <label className="text-slate-900 dark:text-white text-base font-medium leading-normal">Schedule Type *</label>
+                    <div className="flex gap-4">
+                      <button
+                        type="button"
+                        onClick={() => setScheduleType('one-time')}
+                        className={`flex-1 px-4 py-3 rounded-lg border-2 font-semibold transition-colors ${
+                          scheduleType === 'one-time'
+                            ? 'bg-[#13ec37] text-[#112214] border-[#13ec37]'
+                            : 'bg-white dark:bg-[#102213] text-slate-700 dark:text-white border-gray-300 dark:border-[#234829] hover:border-[#13ec37]'
+                        }`}
+                      >
+                        One-Time
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setScheduleType('recurring')}
+                        className={`flex-1 px-4 py-3 rounded-lg border-2 font-semibold transition-colors ${
+                          scheduleType === 'recurring'
+                            ? 'bg-[#13ec37] text-[#112214] border-[#13ec37]'
+                            : 'bg-white dark:bg-[#102213] text-slate-700 dark:text-white border-gray-300 dark:border-[#234829] hover:border-[#13ec37]'
+                        }`}
+                      >
+                        Recurring
+                      </button>
+                    </div>
+                  </div>
+
+                  <div className="space-y-4">
+                    {scheduleType === 'one-time' ? (
+                      <>
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                          <div className="flex flex-col gap-2">
+                            <label className="text-slate-900 dark:text-white text-base font-medium leading-normal">Start Date & Time *</label>
+                            <input
+                              type="datetime-local"
+                              value={newWindowStart}
+                              min={getMinDateTime()}
+                              onChange={(e) => {
+                                setNewWindowStart(e.target.value);
+                                if (e.target.value && newWindowEnd && new Date(e.target.value) >= new Date(newWindowEnd)) {
+                                  setNewWindowEnd('');
+                                }
+                              }}
+                              className="w-full rounded-lg bg-gray-50 dark:bg-[#102213] border border-gray-300 dark:border-[#234829] text-slate-900 dark:text-white h-14 px-4 focus:outline-none focus:ring-2 focus:ring-[#13ec37] focus:border-transparent transition-all"
+                            />
+                            <p className="text-xs text-slate-500 dark:text-[#92c99b] pl-1">Must be today or in the future</p>
+                          </div>
+                          <div className="flex flex-col gap-2">
+                            <label className="text-slate-900 dark:text-white text-base font-medium leading-normal">End Date & Time *</label>
+                            <input
+                              type="datetime-local"
+                              value={newWindowEnd}
+                              min={newWindowStart || getMinDateTime()}
+                              onChange={(e) => setNewWindowEnd(e.target.value)}
+                              className="w-full rounded-lg bg-gray-50 dark:bg-[#102213] border border-gray-300 dark:border-[#234829] text-slate-900 dark:text-white h-14 px-4 focus:outline-none focus:ring-2 focus:ring-[#13ec37] focus:border-transparent transition-all disabled:opacity-50"
+                              disabled={!newWindowStart}
+                            />
+                            <p className="text-xs text-slate-500 dark:text-[#92c99b] pl-1">
+                              {newWindowStart ? 'Must be after start time' : 'Select start time first'}
+                            </p>
+                          </div>
+                        </div>
+                        {newWindowStart && newWindowEnd && new Date(newWindowStart) >= new Date(newWindowEnd) && (
+                          <p className="text-sm text-red-400">⚠️ End time must be after start time</p>
+                        )}
+                        {newWindowStart && new Date(newWindowStart) < new Date() && (
+                          <p className="text-sm text-red-400">⚠️ Start time cannot be in the past</p>
+                        )}
+                      </>
+                    ) : (
+                      <>
+                        <div className="flex flex-col gap-2">
+                          <label className="text-slate-900 dark:text-white text-base font-medium leading-normal">Days of Week *</label>
+                          <div className="grid grid-cols-7 gap-2">
+                            {dayAbbr.map((day, index) => (
+                              <button
+                                key={index}
+                                type="button"
+                                onClick={() => toggleRecurringDay(index)}
+                                className={`px-3 py-2 rounded-lg border-2 font-semibold text-sm transition-colors ${
+                                  recurringDays.includes(index)
+                                    ? 'bg-[#13ec37] text-[#112214] border-[#13ec37]'
+                                    : 'bg-white dark:bg-[#102213] text-slate-700 dark:text-white border-gray-300 dark:border-[#234829] hover:border-[#13ec37]'
+                                }`}
+                              >
+                                {day}
+                              </button>
+                            ))}
+                          </div>
+                          <p className="text-xs text-slate-500 dark:text-[#92c99b] pl-1">Select one or more days</p>
+                        </div>
+
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                          <div className="flex flex-col gap-2">
+                            <label className="text-slate-900 dark:text-white text-base font-medium leading-normal">Start Time *</label>
+                            <input
+                              type="time"
+                              value={recurringStartTime}
+                              onChange={(e) => {
+                                setRecurringStartTime(e.target.value);
+                                if (e.target.value && recurringEndTime && e.target.value >= recurringEndTime) {
+                                  setRecurringEndTime('');
+                                }
+                              }}
+                              className="w-full rounded-lg bg-gray-50 dark:bg-[#102213] border border-gray-300 dark:border-[#234829] text-slate-900 dark:text-white h-14 px-4 focus:outline-none focus:ring-2 focus:ring-[#13ec37] focus:border-transparent transition-all"
+                            />
+                          </div>
+                          <div className="flex flex-col gap-2">
+                            <label className="text-slate-900 dark:text-white text-base font-medium leading-normal">End Time *</label>
+                            <input
+                              type="time"
+                              value={recurringEndTime}
+                              min={recurringStartTime}
+                              onChange={(e) => setRecurringEndTime(e.target.value)}
+                              className="w-full rounded-lg bg-gray-50 dark:bg-[#102213] border border-gray-300 dark:border-[#234829] text-slate-900 dark:text-white h-14 px-4 focus:outline-none focus:ring-2 focus:ring-[#13ec37] focus:border-transparent transition-all disabled:opacity-50"
+                              disabled={!recurringStartTime}
+                            />
+                          </div>
+                        </div>
+                        {recurringStartTime && recurringEndTime && recurringEndTime <= recurringStartTime && (
+                          <p className="text-sm text-red-400">⚠️ End time must be after start time</p>
+                        )}
+
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                          <div className="flex flex-col gap-2">
+                            <label className="text-slate-900 dark:text-white text-base font-medium leading-normal">Start Date *</label>
+                            <input
+                              type="date"
+                              value={recurringStartDate}
+                              min={getMinDate()}
+                              onChange={(e) => {
+                                setRecurringStartDate(e.target.value);
+                                if (e.target.value && recurringEndDate && new Date(e.target.value) >= new Date(recurringEndDate)) {
+                                  setRecurringEndDate('');
+                                }
+                              }}
+                              className="w-full rounded-lg bg-gray-50 dark:bg-[#102213] border border-gray-300 dark:border-[#234829] text-slate-900 dark:text-white h-14 px-4 focus:outline-none focus:ring-2 focus:ring-[#13ec37] focus:border-transparent transition-all"
+                            />
+                            <p className="text-xs text-slate-500 dark:text-[#92c99b] pl-1">When recurring schedule begins</p>
+                          </div>
+                          <div className="flex flex-col gap-2">
+                            <label className="text-slate-900 dark:text-white text-base font-medium leading-normal">End Date (Optional)</label>
+                            <input
+                              type="date"
+                              value={recurringEndDate}
+                              min={recurringStartDate || getMinDate()}
+                              onChange={(e) => setRecurringEndDate(e.target.value)}
+                              className="w-full rounded-lg bg-gray-50 dark:bg-[#102213] border border-gray-300 dark:border-[#234829] text-slate-900 dark:text-white h-14 px-4 focus:outline-none focus:ring-2 focus:ring-[#13ec37] focus:border-transparent transition-all disabled:opacity-50"
+                              disabled={!recurringStartDate}
+                            />
+                            <p className="text-xs text-slate-500 dark:text-[#92c99b] pl-1">Leave empty for ongoing schedule (max 12 weeks)</p>
+                          </div>
+                        </div>
+                      </>
+                    )}
+
+                    <button
+                      onClick={addPickupWindow}
+                      className="w-full px-4 py-2.5 bg-[#13ec37] hover:bg-[#11d632] text-[#112214] rounded-lg font-bold transition-all shadow-[0_0_15px_rgba(19,236,55,0.3)]"
+                    >
+                      {scheduleType === 'one-time' ? 'Add Window' : 'Generate Recurring Windows'}
+                    </button>
+
+                    {pickupWindows.length > 0 && (
+                      <div className="mt-4">
+                        <div className="flex justify-between items-center mb-2">
+                          <h3 className="text-sm font-semibold text-slate-900 dark:text-white">
+                            Added Windows ({pickupWindows.length})
+                          </h3>
+                          <button
+                            onClick={() => setPickupWindows([])}
+                            className="text-sm text-red-400 hover:text-red-300"
+                          >
+                            Clear All
+                          </button>
+                        </div>
+                        <div className="max-h-60 overflow-y-auto space-y-2">
+                          {pickupWindows.map((window, index) => (
+                            <div key={index} className="flex justify-between items-center p-3 bg-gray-50 dark:bg-[#234829] rounded-lg">
+                              <span className="text-sm text-slate-900 dark:text-white">
+                                {new Date(window.start).toLocaleString()} - {new Date(window.end).toLocaleString()}
+                              </span>
+                              <button
+                                onClick={() => removePickupWindow(index)}
+                                className="text-red-400 hover:text-red-300 text-sm font-semibold"
+                              >
+                                Remove
+                              </button>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                </>
+              )}
+
+              {/* Action Buttons */}
+              <div className="flex flex-col sm:flex-row gap-4 pt-4 mt-auto">
+                {step > 1 && (
+                  <button
+                    onClick={() => setStep(step - 1)}
+                    className="flex-1 sm:flex-none px-6 h-12 rounded-lg border border-gray-300 dark:border-[#234829] text-slate-700 dark:text-white font-medium hover:bg-gray-100 dark:hover:bg-white/5 transition-colors"
+                  >
+                    Back
+                  </button>
+                )}
+                {step < 4 ? (
                   <button
                     onClick={() => {
-                      setImagePreview(null);
-                      setImageFile(null);
-                      fileInputRef.current?.click();
+                      if (step === 1 && !category) {
+                        toast.error('Please select a category');
+                        return;
+                      }
+                      if (step === 2 && !imageFile) {
+                        toast.error('Please upload a photo');
+                        return;
+                      }
+                      if (step === 3) {
+                        if (!title || !price || !address || !latitude || !longitude) {
+                          toast.error('Please fill all required fields including address with GPS coordinates');
+                          return;
+                        }
+                      }
+                      setStep(step + 1);
                     }}
-                    className="absolute top-2 right-2 bg-red-600 text-white px-4 py-2 rounded-lg"
+                    disabled={
+                      (step === 1 && !category) ||
+                      (step === 2 && !imageFile) ||
+                      (step === 3 && (!title || !price || !address || !latitude || !longitude))
+                    }
+                    className="flex-1 h-12 rounded-lg bg-[#13ec37] text-[#112214] font-bold hover:bg-[#11d632] transition-colors flex items-center justify-center gap-2 shadow-[0_0_20px_rgba(19,236,55,0.3)] disabled:opacity-50"
                   >
-                    Change
+                    {step === 1 ? 'Next: Photo' : step === 2 ? 'Next: Details' : 'Next: Schedule'}
+                    <span className="material-symbols-outlined text-lg">arrow_forward</span>
                   </button>
-                </div>
-              ) : (
-                <div
-                  onClick={() => fileInputRef.current?.click()}
-                  className="border-2 border-dashed border-gray-300 rounded-lg p-12 text-center cursor-pointer hover:border-green-500 transition-colors"
-                >
-                  <svg className="w-16 h-16 mx-auto text-gray-400 mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
-                  </svg>
-                  <p className="text-gray-600">Click to upload photo</p>
-                </div>
-              )}
-              <input
-                ref={fileInputRef}
-                type="file"
-                accept="image/*"
-                onChange={handleImageChange}
-                className="hidden"
-              />
-            </div>
-            <div className="flex justify-between mt-6">
-              <button onClick={() => setStep(1)} className="px-6 py-2 bg-gray-200 text-gray-900 rounded-lg font-semibold hover:bg-gray-300">Back</button>
-              <button
-                onClick={() => imageFile && setStep(3)}
-                disabled={!imageFile}
-                className="px-6 py-2 bg-green-600 text-white rounded-lg disabled:opacity-50"
-              >
-                Next
-              </button>
-            </div>
-          </div>
-        )}
-
-        {/* Step 3: Details */}
-        {step === 3 && (
-          <div className="bg-white rounded-xl shadow-lg p-8">
-            <h2 className="text-2xl font-bold text-gray-900 mb-6">Listing Details</h2>
-            <div className="space-y-4">
-              <div>
-                <label className="block text-sm font-semibold text-gray-900 mb-2">Title *</label>
-                <input
-                  type="text"
-                  value={title}
-                  onChange={(e) => setTitle(e.target.value)}
-                  className="w-full px-4 py-2 border-2 border-gray-200 rounded-lg focus:ring-2 focus:ring-green-500 text-gray-900"
-                  placeholder="e.g., Fresh vegetable scraps"
-                />
-              </div>
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-sm font-semibold text-gray-900 mb-2">Weight (kg)</label>
-                  <input
-                    type="number"
-                    value={weightKg}
-                    onChange={(e) => setWeightKg(e.target.value)}
-                    className="w-full px-4 py-2 border-2 border-gray-200 rounded-lg text-gray-900"
-                    placeholder="Optional"
-                  />
-                </div>
-                <div>
-                  <label className="block text-sm font-semibold text-gray-900 mb-2">Price * ({currency})</label>
-                  <input
-                    type="number"
-                    value={price}
-                    onChange={(e) => setPrice(e.target.value)}
-                    className="w-full px-4 py-2 border-2 border-gray-200 rounded-lg text-gray-900"
-                    placeholder="0.00"
-                    step="0.01"
-                  />
-                </div>
-              </div>
-              <div>
-                <label className="block text-sm font-semibold text-gray-900 mb-2">Notes</label>
-                <textarea
-                  value={notes}
-                  onChange={(e) => setNotes(e.target.value)}
-                  className="w-full px-4 py-2 border-2 border-gray-200 rounded-lg text-gray-900"
-                  rows={3}
-                  placeholder="Additional details about the waste..."
-                />
-              </div>
-              <div>
-                <label className="block text-sm font-semibold text-gray-900 mb-2">Pickup Address *</label>
-                <div className="flex gap-2">
-                  <input
-                    ref={addressInputRef}
-                    type="text"
-                    value={address}
-                    onChange={(e) => {
-                      setAddress(e.target.value);
-                      // Clear coordinates when address changes manually (unless from autocomplete)
-                      if (!autocompleteRef.current?.getPlace()) {
-                        setLatitude(null);
-                        setLongitude(null);
-                      }
-                    }}
-                    onBlur={() => {
-                      // If address is set but no coordinates, try to geocode
-                      if (address && !latitude && !longitude) {
-                        geocodeAddress(address);
-                      }
-                    }}
-                    className="flex-1 px-4 py-2 border-2 border-gray-200 rounded-lg text-gray-900"
-                    placeholder="Enter address or select from dropdown"
-                  />
+                ) : (
                   <button
-                    type="button"
-                    onClick={useCurrentLocation}
-                    className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700"
+                    onClick={handleSubmit}
+                    disabled={submitting || pickupWindows.length === 0}
+                    className="flex-1 h-12 rounded-lg bg-[#13ec37] text-[#112214] font-bold hover:bg-[#11d632] transition-colors flex items-center justify-center gap-2 shadow-[0_0_20px_rgba(19,236,55,0.3)] disabled:opacity-50"
                   >
-                    Use GPS
+                    {submitting ? 'Publishing...' : 'Publish Listing'}
+                    <span className="material-symbols-outlined text-lg">check</span>
                   </button>
-                </div>
-                {latitude && longitude && (
-                  <p className="text-xs text-green-600 mt-1">
-                    ✓ Coordinates: {latitude.toFixed(5)}, {longitude.toFixed(5)}
-                  </p>
                 )}
               </div>
             </div>
-            <div className="flex justify-between mt-6">
-              <button onClick={() => setStep(2)} className="px-6 py-2 bg-gray-200 text-gray-900 rounded-lg font-semibold hover:bg-gray-300">Back</button>
-              <button
-                onClick={() => {
-                  if (!title || !price || !address || !latitude || !longitude) {
-                    toast.error('Please fill all required fields including address with GPS coordinates');
-                    return;
-                  }
-                  setStep(4);
-                }}
-                disabled={!title || !price || !address || !latitude || !longitude}
-                className="px-6 py-2 bg-green-600 text-white rounded-lg disabled:opacity-50"
-              >
-                Next
-              </button>
-            </div>
-            {address && (!latitude || !longitude) && (
-              <p className="text-sm text-red-600 mt-2">
-                Please use the "Use GPS" button or select an address from the dropdown to get coordinates.
-              </p>
-            )}
           </div>
-        )}
 
-        {/* Step 4: Schedule */}
-        {step === 4 && (
-          <div className="bg-white rounded-xl shadow-lg p-8">
-            <h2 className="text-2xl font-bold text-gray-900 mb-6">Pickup Schedule</h2>
-            
-            {/* Schedule Type Selector */}
-            <div className="mb-6">
-              <label className="block text-sm font-semibold text-gray-900 mb-3">Schedule Type *</label>
-              <div className="flex gap-4">
-                <button
-                  type="button"
-                  onClick={() => setScheduleType('one-time')}
-                  className={`flex-1 px-4 py-3 rounded-lg border-2 font-semibold transition-colors ${
-                    scheduleType === 'one-time'
-                      ? 'bg-green-600 text-white border-green-600'
-                      : 'bg-white text-gray-700 border-gray-300 hover:border-green-500'
-                  }`}
-                >
-                  One-Time
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setScheduleType('recurring')}
-                  className={`flex-1 px-4 py-3 rounded-lg border-2 font-semibold transition-colors ${
-                    scheduleType === 'recurring'
-                      ? 'bg-green-600 text-white border-green-600'
-                      : 'bg-white text-gray-700 border-gray-300 hover:border-green-500'
-                  }`}
-                >
-                  Recurring
-                </button>
+          {/* Right Column: Safety Context */}
+          <div className="lg:col-span-4 flex flex-col gap-6">
+            {/* Safety Standards Card */}
+            <div className="bg-[#e8f5e9] dark:bg-[#152a19] border border-[#c8e6c9] dark:border-[#1e3f24] rounded-xl p-6 sticky top-24">
+              <div className="flex items-center gap-3 mb-6">
+                <div className="bg-[#13ec37] text-[#112214] p-1.5 rounded-lg flex items-center justify-center">
+                  <span className="material-symbols-outlined">shield</span>
+                </div>
+                <h3 className="text-slate-900 dark:text-white text-lg font-bold">Safety Standards</h3>
               </div>
-            </div>
-
-            <div className="space-y-4">
-              {scheduleType === 'one-time' ? (
-                <>
-                  {/* One-Time Schedule */}
-                  <div className="grid grid-cols-2 gap-4">
-                    <div>
-                      <label className="block text-sm font-semibold text-gray-900 mb-2">Start Date & Time *</label>
-                      <input
-                        type="datetime-local"
-                        value={newWindowStart}
-                        min={getMinDateTime()}
-                        onChange={(e) => {
-                          setNewWindowStart(e.target.value);
-                          if (e.target.value && newWindowEnd && new Date(e.target.value) >= new Date(newWindowEnd)) {
-                            setNewWindowEnd('');
-                          }
-                        }}
-                        className="w-full px-4 py-2 border-2 border-gray-200 rounded-lg text-gray-900"
-                      />
-                      <p className="text-xs text-gray-500 mt-1">Must be today or in the future</p>
-                    </div>
-                    <div>
-                      <label className="block text-sm font-semibold text-gray-900 mb-2">End Date & Time *</label>
-                      <input
-                        type="datetime-local"
-                        value={newWindowEnd}
-                        min={newWindowStart || getMinDateTime()}
-                        onChange={(e) => setNewWindowEnd(e.target.value)}
-                        className="w-full px-4 py-2 border-2 border-gray-200 rounded-lg text-gray-900 disabled:text-gray-500"
-                        disabled={!newWindowStart}
-                      />
-                      <p className="text-xs text-gray-500 mt-1">
-                        {newWindowStart ? 'Must be after start time' : 'Select start time first'}
-                      </p>
-                    </div>
+              <p className="text-slate-700 dark:text-gray-300 text-sm mb-6 leading-relaxed">
+                To ensure high-quality compost for our partner farmers, please verify your waste meets these strict criteria before submitting.
+              </p>
+              <div className="space-y-4">
+                <div className="flex items-start gap-3">
+                  <div className="flex-shrink-0 mt-0.5 text-[#13ec37]">
+                    <span className="material-symbols-outlined">check_circle</span>
                   </div>
-                  {newWindowStart && newWindowEnd && new Date(newWindowStart) >= new Date(newWindowEnd) && (
-                    <p className="text-sm text-red-600">
-                      ⚠️ End time must be after start time
-                    </p>
-                  )}
-                  {newWindowStart && new Date(newWindowStart) < new Date() && (
-                    <p className="text-sm text-red-600">
-                      ⚠️ Start time cannot be in the past
-                    </p>
-                  )}
-                </>
-              ) : (
-                <>
-                  {/* Recurring Schedule */}
                   <div>
-                    <label className="block text-sm font-semibold text-gray-900 mb-2">Days of Week *</label>
-                    <div className="grid grid-cols-7 gap-2">
-                      {dayAbbr.map((day, index) => (
-                        <button
-                          key={index}
-                          type="button"
-                          onClick={() => toggleRecurringDay(index)}
-                          className={`px-3 py-2 rounded-lg border-2 font-semibold text-sm transition-colors ${
-                            recurringDays.includes(index)
-                              ? 'bg-green-600 text-white border-green-600'
-                              : 'bg-white text-gray-700 border-gray-300 hover:border-green-500'
-                          }`}
-                        >
-                          {day}
-                        </button>
-                      ))}
-                    </div>
-                    <p className="text-xs text-gray-500 mt-2">Select one or more days</p>
-                  </div>
-
-                  <div className="grid grid-cols-2 gap-4">
-                    <div>
-                      <label className="block text-sm font-semibold text-gray-900 mb-2">Start Time *</label>
-                      <input
-                        type="time"
-                        value={recurringStartTime}
-                        onChange={(e) => {
-                          setRecurringStartTime(e.target.value);
-                          if (e.target.value && recurringEndTime && e.target.value >= recurringEndTime) {
-                            setRecurringEndTime('');
-                          }
-                        }}
-                        className="w-full px-4 py-2 border-2 border-gray-200 rounded-lg text-gray-900"
-                      />
-                    </div>
-                    <div>
-                      <label className="block text-sm font-semibold text-gray-900 mb-2">End Time *</label>
-                      <input
-                        type="time"
-                        value={recurringEndTime}
-                        min={recurringStartTime}
-                        onChange={(e) => setRecurringEndTime(e.target.value)}
-                        className="w-full px-4 py-2 border-2 border-gray-200 rounded-lg text-gray-900 disabled:text-gray-500"
-                        disabled={!recurringStartTime}
-                      />
-                    </div>
-                  </div>
-                  {recurringStartTime && recurringEndTime && recurringEndTime <= recurringStartTime && (
-                    <p className="text-sm text-red-600">
-                      ⚠️ End time must be after start time
-                    </p>
-                  )}
-
-                  <div className="grid grid-cols-2 gap-4">
-                    <div>
-                      <label className="block text-sm font-semibold text-gray-900 mb-2">Start Date *</label>
-                      <input
-                        type="date"
-                        value={recurringStartDate}
-                        min={getMinDate()}
-                        onChange={(e) => {
-                          setRecurringStartDate(e.target.value);
-                          if (e.target.value && recurringEndDate && new Date(e.target.value) >= new Date(recurringEndDate)) {
-                            setRecurringEndDate('');
-                          }
-                        }}
-                        className="w-full px-4 py-2 border-2 border-gray-200 rounded-lg text-gray-900"
-                      />
-                      <p className="text-xs text-gray-500 mt-1">When recurring schedule begins</p>
-                    </div>
-                    <div>
-                      <label className="block text-sm font-semibold text-gray-900 mb-2">End Date (Optional)</label>
-                      <input
-                        type="date"
-                        value={recurringEndDate}
-                        min={recurringStartDate || getMinDate()}
-                        onChange={(e) => setRecurringEndDate(e.target.value)}
-                        className="w-full px-4 py-2 border-2 border-gray-200 rounded-lg text-gray-900 disabled:text-gray-500"
-                        disabled={!recurringStartDate}
-                      />
-                      <p className="text-xs text-gray-500 mt-1">Leave empty for ongoing schedule (max 12 weeks)</p>
-                    </div>
-                  </div>
-                </>
-              )}
-
-              <button
-                onClick={addPickupWindow}
-                className="w-full px-4 py-2 bg-green-600 text-white rounded-lg font-semibold hover:bg-green-700"
-              >
-                {scheduleType === 'one-time' ? 'Add Window' : 'Generate Recurring Windows'}
-              </button>
-
-              {pickupWindows.length > 0 && (
-                <div className="mt-4">
-                  <div className="flex justify-between items-center mb-2">
-                    <h3 className="text-sm font-semibold text-gray-900">
-                      Added Windows ({pickupWindows.length})
-                    </h3>
-                    <button
-                      onClick={() => setPickupWindows([])}
-                      className="text-sm text-red-600 hover:text-red-800"
-                    >
-                      Clear All
-                    </button>
-                  </div>
-                  <div className="max-h-60 overflow-y-auto space-y-2">
-                    {pickupWindows.map((window, index) => (
-                      <div key={index} className="flex justify-between items-center p-3 bg-gray-50 rounded-lg">
-                        <span className="text-sm text-gray-900">
-                          {new Date(window.start).toLocaleString()} - {new Date(window.end).toLocaleString()}
-                        </span>
-                        <button
-                          onClick={() => removePickupWindow(index)}
-                          className="text-red-600 hover:text-red-800 text-sm font-semibold"
-                        >
-                          Remove
-                        </button>
-                      </div>
-                    ))}
+                    <p className="text-slate-900 dark:text-white font-medium text-sm">No Inorganic Material</p>
+                    <p className="text-slate-600 dark:text-[#92c99b] text-xs">Zero tolerance for plastic, glass, metal, or rubber bands.</p>
                   </div>
                 </div>
-              )}
-            </div>
-            <div className="flex justify-between mt-6">
-              <button onClick={() => setStep(3)} className="px-6 py-2 bg-gray-200 text-gray-900 rounded-lg font-semibold hover:bg-gray-300">Back</button>
-              <button
-                onClick={handleSubmit}
-                disabled={submitting || pickupWindows.length === 0}
-                className="px-6 py-2 bg-green-600 text-white rounded-lg disabled:opacity-50"
-              >
-                {submitting ? 'Publishing...' : 'Publish Listing'}
-              </button>
+                <div className="flex items-start gap-3">
+                  <div className="flex-shrink-0 mt-0.5 text-[#13ec37]">
+                    <span className="material-symbols-outlined">check_circle</span>
+                  </div>
+                  <div>
+                    <p className="text-slate-900 dark:text-white font-medium text-sm">Low Fat/Oil Content</p>
+                    <p className="text-slate-600 dark:text-[#92c99b] text-xs">Avoid large quantities of grease or fryer oil.</p>
+                  </div>
+                </div>
+                <div className="flex items-start gap-3">
+                  <div className="flex-shrink-0 mt-0.5 text-[#13ec37]">
+                    <span className="material-symbols-outlined">check_circle</span>
+                  </div>
+                  <div>
+                    <p className="text-slate-900 dark:text-white font-medium text-sm">No Hazardous Waste</p>
+                    <p className="text-slate-600 dark:text-[#92c99b] text-xs">No cleaning chemicals, batteries, or medical waste.</p>
+                  </div>
+                </div>
+              </div>
+              <div className="mt-8 p-4 bg-white/50 dark:bg-black/20 rounded-lg border border-[#13ec37]/10">
+                <div className="flex items-center gap-2 mb-2">
+                  <span className="material-symbols-outlined text-[#13ec37] text-sm">lightbulb</span>
+                  <span className="text-xs font-bold uppercase tracking-wider text-[#13ec37]">Pro Tip</span>
+                </div>
+                <p className="text-slate-600 dark:text-[#92c99b] text-xs">
+                  Chopping larger vegetative scraps into smaller pieces speeds up the composting process and earns bonus points.
+                </p>
+              </div>
             </div>
           </div>
-        )}
-      </div>
+        </div>
+      </main>
     </div>
   );
 }

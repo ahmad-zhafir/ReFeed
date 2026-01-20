@@ -44,6 +44,12 @@ function FarmerFeedContent() {
   const [searchRadius, setSearchRadius] = useState(10);
   const [profileDropdownOpen, setProfileDropdownOpen] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
+  
+  // Search and filter state
+  const [searchQuery, setSearchQuery] = useState('');
+  const [categoryFilter, setCategoryFilter] = useState<string>('');
+  const [priceFilter, setPriceFilter] = useState<{ min: string; max: string }>({ min: '', max: '' });
+  const [sortBy, setSortBy] = useState<'distance' | 'price-low' | 'price-high' | 'date'>('distance');
 
   useEffect(() => {
     const unsubscribe = onAuthStateChange(async (currentUser) => {
@@ -339,33 +345,121 @@ function FarmerFeedContent() {
           </div>
         )}
 
-        {/* Filters */}
+        {/* Search and Filters */}
         <div className="bg-white rounded-xl shadow-lg p-6 mb-8 border border-gray-100">
-          <div className="flex items-center justify-between flex-wrap gap-4">
-            <div className="flex-1 min-w-[200px]">
-              <label className="block text-sm font-semibold text-gray-900 mb-2">
-                Search Radius: <span className="text-emerald-700">{searchRadius} km</span>
-              </label>
+          <div className="flex flex-col gap-6">
+            {/* Search Bar */}
+            <div className="relative">
+              <div className="absolute inset-y-0 left-0 flex items-center pl-4 pointer-events-none">
+                <span className="material-symbols-outlined text-gray-400">search</span>
+              </div>
               <input
-                type="range"
-                min={1}
-                max={20}
-                step={1}
-                value={searchRadius}
-                onChange={(e) => updateRadius(parseInt(e.target.value, 10))}
-                className="w-full"
+                type="text"
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                placeholder="Search by title, category, or address..."
+                className="w-full pl-12 pr-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 text-gray-900"
               />
-              <div className="flex justify-between text-xs text-gray-500 mt-1">
-                <span>1km</span>
-                <span>20km</span>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+              {/* Search Radius */}
+              <div className="flex flex-col gap-2">
+                <label className="block text-sm font-semibold text-gray-900">
+                  Search Radius: <span className="text-emerald-700">{searchRadius} km</span>
+                </label>
+                <input
+                  type="range"
+                  min={1}
+                  max={20}
+                  step={1}
+                  value={searchRadius}
+                  onChange={(e) => updateRadius(parseInt(e.target.value, 10))}
+                  className="w-full"
+                />
+                <div className="flex justify-between text-xs text-gray-500">
+                  <span>1km</span>
+                  <span>20km</span>
+                </div>
+              </div>
+
+              {/* Category Filter */}
+              <div className="flex flex-col gap-2">
+                <label className="block text-sm font-semibold text-gray-900">Category</label>
+                <select
+                  value={categoryFilter}
+                  onChange={(e) => setCategoryFilter(e.target.value)}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 text-gray-900"
+                >
+                  <option value="">All Categories</option>
+                  {Array.from(new Set(listings.map(l => l.category))).map((cat) => (
+                    <option key={cat} value={cat}>{cat}</option>
+                  ))}
+                </select>
+              </div>
+
+              {/* Price Range */}
+              <div className="flex flex-col gap-2">
+                <label className="block text-sm font-semibold text-gray-900">Price Range</label>
+                <div className="flex gap-2">
+                  <input
+                    type="number"
+                    value={priceFilter.min}
+                    onChange={(e) => setPriceFilter({ ...priceFilter, min: e.target.value })}
+                    placeholder="Min"
+                    className="flex-1 px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 text-gray-900"
+                  />
+                  <input
+                    type="number"
+                    value={priceFilter.max}
+                    onChange={(e) => setPriceFilter({ ...priceFilter, max: e.target.value })}
+                    placeholder="Max"
+                    className="flex-1 px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 text-gray-900"
+                  />
+                </div>
+              </div>
+
+              {/* Sort By */}
+              <div className="flex flex-col gap-2">
+                <label className="block text-sm font-semibold text-gray-900">Sort By</label>
+                <select
+                  value={sortBy}
+                  onChange={(e) => setSortBy(e.target.value as any)}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 text-gray-900"
+                >
+                  <option value="distance">Distance</option>
+                  <option value="price-low">Price: Low to High</option>
+                  <option value="price-high">Price: High to Low</option>
+                  <option value="date">Newest First</option>
+                </select>
               </div>
             </div>
-            <Link
-              href="/farmer/map"
-              className="px-6 py-3 bg-gradient-to-r from-green-600 to-emerald-600 text-white rounded-full hover:from-green-700 hover:to-emerald-700 transition-all shadow-md hover:shadow-lg font-semibold"
-            >
-              View Map
-            </Link>
+
+            {/* Action Buttons */}
+            <div className="flex flex-wrap gap-3 items-center justify-between">
+              <div className="flex gap-2">
+                {(searchQuery || categoryFilter || priceFilter.min || priceFilter.max) && (
+                  <button
+                    onClick={() => {
+                      setSearchQuery('');
+                      setCategoryFilter('');
+                      setPriceFilter({ min: '', max: '' });
+                    }}
+                    className="px-4 py-2 text-sm text-gray-700 hover:text-gray-900 hover:bg-gray-100 rounded-lg transition-colors flex items-center gap-2"
+                  >
+                    <span className="material-symbols-outlined text-lg">clear</span>
+                    Clear Filters
+                  </button>
+                )}
+              </div>
+              <Link
+                href="/farmer/map"
+                className="px-6 py-3 bg-gradient-to-r from-green-600 to-emerald-600 text-white rounded-lg hover:from-green-700 hover:to-emerald-700 transition-all shadow-md hover:shadow-lg font-semibold flex items-center gap-2"
+              >
+                <span className="material-symbols-outlined">map</span>
+                View Map
+              </Link>
+            </div>
           </div>
         </div>
 
@@ -376,12 +470,38 @@ function FarmerFeedContent() {
           </h2>
           
           {filteredListings.length === 0 ? (
-            <div className="text-center py-12 bg-white rounded-xl border border-gray-200">
-              <p className="text-gray-600 mb-4">
+            <div className="text-center py-16 bg-white rounded-xl border border-gray-200">
+              <div className="mb-6">
+                <span className="material-symbols-outlined text-gray-300 text-6xl mb-4 inline-block">search_off</span>
+              </div>
+              <h3 className="text-xl font-bold text-gray-900 mb-2">
+                {listings.length === 0 ? 'No listings available yet' : 'No listings found'}
+              </h3>
+              <p className="text-gray-600 mb-6 max-w-md mx-auto">
                 {listings.length === 0
-                  ? 'No listings available yet. Check back later!'
-                  : `No listings found within ${searchRadius}km. Try increasing your search radius.`}
+                  ? 'Check back later or browse the map to see available listings in your area.'
+                  : `Try adjusting your filters or increasing your search radius (currently ${searchRadius}km).`}
               </p>
+              {(searchQuery || categoryFilter || priceFilter.min || priceFilter.max) && (
+                <button
+                  onClick={() => {
+                    setSearchQuery('');
+                    setCategoryFilter('');
+                    setPriceFilter({ min: '', max: '' });
+                  }}
+                  className="px-6 py-3 bg-emerald-600 text-white rounded-lg hover:bg-emerald-700 transition-colors font-semibold"
+                >
+                  Clear All Filters
+                </button>
+              )}
+              {searchRadius < 20 && !searchQuery && !categoryFilter && !priceFilter.min && !priceFilter.max && (
+                <button
+                  onClick={() => updateRadius(20)}
+                  className="px-6 py-3 bg-emerald-600 text-white rounded-lg hover:bg-emerald-700 transition-colors font-semibold"
+                >
+                  Increase Search Radius
+                </button>
+              )}
             </div>
           ) : (
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
