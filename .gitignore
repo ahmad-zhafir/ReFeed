@@ -35,3 +35,7 @@ yarn-error.log*
 *.tsbuildinfo
 next-env.d.ts
 
+#external documentation
+SOFTWARE_REQUIREMENTS.md 
+AGILE_SCRUM_METHODOLOGY.md
+CODE_COMPLEXITY_ANALYSIS.md

@@ -58,15 +58,20 @@ export default function RatingModal({
       const listingId = orderData.listingId;
 
       // Create rating
-      const ratingData = {
+      const ratingData: any = {
         orderId,
         listingId,
         generatorUid,
         farmerUid,
         rating,
-        comment: comment.trim() || undefined,
         createdAt: Timestamp.now(),
       };
+
+      // Only add comment if it's not empty
+      const trimmedComment = comment.trim();
+      if (trimmedComment) {
+        ratingData.comment = trimmedComment;
+      }
 
       const ratingRef = await addDoc(collection(db, getRatingsCollectionPath()), ratingData);
 
