@@ -13,13 +13,18 @@ export default function RatingDisplay({
   showCount = true,
   size = 'md',
 }: RatingDisplayProps) {
-  if (!rating || rating === 0) {
+  if (!rating || rating === 0 || isNaN(Number(rating))) {
     return (
       <div className="flex items-center gap-1 text-gray-400 dark:text-[#5d8265]">
         <span className="text-xs">No ratings yet</span>
       </div>
     );
   }
+
+  // Ensure rating is a number and format to 1 decimal place
+  const numericRating = typeof rating === 'number' ? rating : parseFloat(String(rating));
+  // Force 1 decimal place display (e.g., 4 becomes 4.0)
+  const formattedRating = isNaN(numericRating) ? '0.0' : Number(numericRating.toFixed(1)).toFixed(1);
 
   const sizeClasses = {
     sm: 'text-sm',
@@ -33,8 +38,8 @@ export default function RatingDisplay({
     lg: 'text-xl',
   };
 
-  const fullStars = Math.floor(rating);
-  const hasHalfStar = rating % 1 >= 0.5;
+  const fullStars = Math.floor(numericRating);
+  const hasHalfStar = numericRating % 1 >= 0.5;
   const emptyStars = 5 - fullStars - (hasHalfStar ? 1 : 0);
 
   return (
@@ -70,7 +75,7 @@ export default function RatingDisplay({
       
       <div className="flex items-center gap-1.5">
         <span className={`font-semibold text-slate-900 dark:text-white ${sizeClasses[size]}`}>
-          {rating.toFixed(1)}
+          {formattedRating}
         </span>
         {showCount && totalRatings !== undefined && totalRatings > 0 && (
           <span className={`text-gray-500 dark:text-[#5d8265] ${sizeClasses.sm}`}>

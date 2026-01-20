@@ -3,11 +3,11 @@
 import { useState, useEffect, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import { getFirestoreDb, signOut, onAuthStateChange } from '@/lib/firebase';
-import { collection, query, where, onSnapshot, doc, updateDoc, deleteDoc } from 'firebase/firestore';
+import { collection, query, where, onSnapshot, doc, updateDoc, deleteDoc, getDoc } from 'firebase/firestore';
 import { User } from 'firebase/auth';
-import { UserProfile, MarketplaceListing, MarketplaceOrder } from '@/lib/types';
+import { UserProfile, MarketplaceListing, MarketplaceOrder, Rating } from '@/lib/types';
 import { getUserProfile } from '@/lib/userProfile';
-import { getListingsCollectionPath, getOrdersCollectionPath } from '@/lib/constants';
+import { getListingsCollectionPath, getOrdersCollectionPath, getRatingsCollectionPath } from '@/lib/constants';
 import FarmerMapView from '@/components/FarmerMapView';
 import RatingDisplay from '@/components/RatingDisplay';
 import RoleGuard from '@/components/RoleGuard';
@@ -29,6 +29,7 @@ function GeneratorDashboardContent() {
   const [loading, setLoading] = useState(true);
   const [listings, setListings] = useState<MarketplaceListing[]>([]);
   const [orders, setOrders] = useState<MarketplaceOrder[]>([]);
+  const [ratings, setRatings] = useState<Record<string, Rating>>({});
   const [searchQuery, setSearchQuery] = useState('');
   const [activeTab, setActiveTab] = useState<'dashboard' | 'inventory' | 'orders' | 'analytics' | 'map'>('dashboard');
   const [farmers, setFarmers] = useState<UserProfile[]>([]);
@@ -109,12 +110,34 @@ function GeneratorDashboardContent() {
       const ordersRef = collection(db, getOrdersCollectionPath());
       const q = query(ordersRef, where('generatorUid', '==', generatorUid));
 
-      const unsubscribe = onSnapshot(q, (snapshot) => {
+      const unsubscribe = onSnapshot(q, async (snapshot) => {
         const ordersData = snapshot.docs.map((doc) => ({
           id: doc.id,
           ...doc.data(),
         })) as MarketplaceOrder[];
         setOrders(ordersData);
+
+        // Load ratings for completed orders
+        const completedOrdersWithRatings = ordersData.filter(o => o.status === 'completed' && o.ratingId);
+        const ratingsMap: Record<string, Rating> = {};
+        
+        for (const order of completedOrdersWithRatings) {
+          if (order.ratingId) {
+            try {
+              const ratingDoc = await getDoc(doc(db, getRatingsCollectionPath(), order.ratingId));
+              if (ratingDoc.exists()) {
+                ratingsMap[order.id] = {
+                  id: ratingDoc.id,
+                  ...ratingDoc.data(),
+                } as Rating;
+              }
+            } catch (error) {
+              console.error(`Error loading rating for order ${order.id}:`, error);
+            }
+          }
+        }
+        
+        setRatings(ratingsMap);
       });
 
       return unsubscribe;
@@ -1116,6 +1139,36 @@ function GeneratorDashboardContent() {
                                   </span>
                                 </div>
                                 <p className="text-[#92c99b] text-sm mb-3">{order.address}</p>
+                                
+                                {/* Rating Section for Completed Orders */}
+                                {order.status === 'completed' && (
+                                  <div className="mb-3 p-3 bg-[#112214] rounded-lg border border-[#234829]">
+                                    {order.ratingId && ratings[order.id] ? (
+                                      <div className="space-y-2">
+                                        <div className="flex items-center justify-between">
+                                          <span className="text-sm font-medium text-[#92c99b]">Rating:</span>
+                                          <RatingDisplay 
+                                            rating={ratings[order.id].rating} 
+                                            size="sm"
+                                            showCount={false}
+                                          />
+                                        </div>
+                                        {ratings[order.id].comment && (
+                                          <div className="mt-2 pt-2 border-t border-[#234829]">
+                                            <p className="text-xs text-[#92c99b] mb-1">Comment:</p>
+                                            <p className="text-sm text-white italic">"{ratings[order.id].comment}"</p>
+                                          </div>
+                                        )}
+                                      </div>
+                                    ) : (
+                                      <div className="flex items-center gap-2">
+                                        <span className="material-symbols-outlined text-yellow-500 text-base">star</span>
+                                        <span className="text-sm text-[#92c99b]">Not rated yet</span>
+                                      </div>
+                                    )}
+                                  </div>
+                                )}
+
                                 <div className="flex justify-between items-center">
                                   <div className="space-y-1">
                                     <div className="flex items-center gap-2 text-sm text-[#92c99b]">
