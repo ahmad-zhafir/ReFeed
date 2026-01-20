@@ -614,7 +614,7 @@ function FarmerFeedContent() {
                 >
                   <span>All</span>
                 </button>
-                {uniqueCategories.slice(0, 4).map((cat) => (
+                {uniqueCategories.map((cat) => (
                   <button
                     key={cat}
                     onClick={() => setCategoryFilter(cat === categoryFilter ? '' : cat)}
@@ -741,7 +741,7 @@ function FarmerFeedContent() {
                         <div className="flex justify-between items-start">
                           <div>
                             <h3 className="text-lg font-bold text-white group-hover:text-[#13ec37] transition-colors">
-                              {listing.generatorName || listing.title}
+                              {listing.title}
                             </h3>
                             <div className="flex items-center gap-1 text-[#92c99b] text-sm mt-0.5">
                               <span className="material-symbols-outlined text-[16px] text-[#13ec37]">near_me</span>

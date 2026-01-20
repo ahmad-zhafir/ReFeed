@@ -30,6 +30,8 @@ function CheckoutContent() {
   const [userProfile, setUserProfile] = useState<UserProfile | null>(null);
   const [listing, setListing] = useState<MarketplaceListing | null>(null);
   const [selectedWindow, setSelectedWindow] = useState<MarketplacePickupWindow | null>(null);
+  const [selectedDate, setSelectedDate] = useState<string>('');
+  const [finalWindow, setFinalWindow] = useState<MarketplacePickupWindow | null>(null);
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
   const [profileDropdownOpen, setProfileDropdownOpen] = useState(false);
@@ -94,9 +96,87 @@ function CheckoutContent() {
     }
   };
 
+  // Check if window spans more than a day
+  const isMultiDayWindow = (window: MarketplacePickupWindow): boolean => {
+    const start = new Date(window.start);
+    const end = new Date(window.end);
+    const diffTime = end.getTime() - start.getTime();
+    const diffDays = diffTime / (1000 * 60 * 60 * 24);
+    return diffDays >= 1;
+  };
+
+  // Get available dates within a window
+  const getAvailableDates = (window: MarketplacePickupWindow): string[] => {
+    const start = new Date(window.start);
+    const end = new Date(window.end);
+    const dates: string[] = [];
+    const current = new Date(start);
+    
+    while (current <= end) {
+      const year = current.getFullYear();
+      const month = String(current.getMonth() + 1).padStart(2, '0');
+      const day = String(current.getDate()).padStart(2, '0');
+      dates.push(`${year}-${month}-${day}`);
+      current.setDate(current.getDate() + 1);
+    }
+    
+    return dates;
+  };
+
+  // Create a window for a specific date
+  const createDateWindow = (window: MarketplacePickupWindow, date: string): MarketplacePickupWindow => {
+    const start = new Date(window.start);
+    const end = new Date(window.end);
+    const selectedDateObj = new Date(date);
+    
+    // Use the time from the original window, or default to 9 AM - 5 PM
+    const startHour = start.getHours();
+    const startMinute = start.getMinutes();
+    const endHour = end.getHours();
+    const endMinute = end.getMinutes();
+    
+    const newStart = new Date(selectedDateObj);
+    newStart.setHours(startHour, startMinute, 0, 0);
+    
+    const newEnd = new Date(selectedDateObj);
+    newEnd.setHours(endHour, endMinute, 0, 0);
+    
+    // If selected date is the last day, use the original end time
+    const originalEnd = new Date(window.end);
+    if (selectedDateObj.toDateString() === originalEnd.toDateString()) {
+      newEnd.setTime(originalEnd.getTime());
+    }
+    
+    return {
+      start: newStart.toISOString(),
+      end: newEnd.toISOString(),
+    };
+  };
+
+  // Update final window when date is selected
+  useEffect(() => {
+    if (selectedWindow && selectedDate) {
+      if (isMultiDayWindow(selectedWindow)) {
+        const newWindow = createDateWindow(selectedWindow, selectedDate);
+        setFinalWindow(newWindow);
+      } else {
+        setFinalWindow(selectedWindow);
+      }
+    } else if (selectedWindow && !isMultiDayWindow(selectedWindow)) {
+      setFinalWindow(selectedWindow);
+    } else {
+      setFinalWindow(null);
+    }
+  }, [selectedWindow, selectedDate]);
+
   const handleConfirmPurchase = async () => {
-    if (!selectedWindow || !user || !listing) {
-      toast.error('Please select a pickup window');
+    const windowToUse = finalWindow || selectedWindow;
+    if (!windowToUse || !user || !listing) {
+      if (!selectedWindow) {
+        toast.error('Please select a pickup window');
+      } else if (isMultiDayWindow(selectedWindow) && !selectedDate) {
+        toast.error('Please select a pickup date');
+      }
       return;
     }
 
@@ -124,30 +204,31 @@ function CheckoutContent() {
           status: 'reserved',
           reservedBy: user.uid,
           reservedAt: Timestamp.now(),
-          scheduledWindow: selectedWindow,
+          scheduledWindow: windowToUse,
         });
 
         // Create order
         const ordersRef = collection(db, getOrdersCollectionPath());
+        const orderRef = doc(ordersRef); // Create a new document reference with auto-generated ID
         const orderData: Omit<MarketplaceOrder, 'id'> = {
-          listingId: listing.id,
-          generatorUid: listing.generatorUid,
+          listingId: listingId, // Use listingId from params, not listing.id
+          generatorUid: currentListing.generatorUid,
           farmerUid: user.uid,
-          scheduledWindow: selectedWindow,
+          scheduledWindow: windowToUse,
           paymentMethod: 'cash',
           status: 'reserved',
-          price: listing.price,
-          currency: listing.currency,
-          title: listing.title,
-          category: listing.category,
-          imageUrl: listing.imageUrl,
-          address: listing.address,
-          latitude: listing.latitude,
-          longitude: listing.longitude,
+          price: currentListing.price,
+          currency: currentListing.currency,
+          title: currentListing.title,
+          category: currentListing.category,
+          imageUrl: currentListing.imageUrl,
+          address: currentListing.address,
+          latitude: currentListing.latitude,
+          longitude: currentListing.longitude,
           createdAt: Timestamp.now(),
         };
 
-        transaction.set(doc(ordersRef), orderData);
+        transaction.set(orderRef, orderData);
       });
 
       toast.success('Purchase confirmed! Check your orders for pickup details.');
@@ -310,34 +391,90 @@ function CheckoutContent() {
             <div className="space-y-2">
               {listing.pickupWindows.map((window, index) => {
                 const now = new Date();
-                const windowStart = new Date(window.start);
-                const isPast = windowStart < now;
+                const windowEnd = new Date(window.end);
+                const isPast = windowEnd < now;
+                const isMultiDay = isMultiDayWindow(window);
 
                 return (
-                  <button
-                    key={index}
-                    onClick={() => !isPast && setSelectedWindow(window)}
-                    disabled={isPast}
-                    className={`w-full text-left p-4 rounded-lg border-2 transition-all ${
-                      isPast
-                        ? 'border-gray-200 dark:border-[#234829] bg-gray-50 dark:bg-[#112214] opacity-60 cursor-not-allowed'
-                        : selectedWindow === window
-                        ? 'border-[#13ec37] bg-[#13ec37]/10 dark:bg-[#13ec37]/20'
-                        : 'border-gray-200 dark:border-[#234829] bg-gray-50 dark:bg-[#112214] hover:border-[#13ec37]/50'
-                    }`}
-                  >
-                    <p className={`font-semibold ${isPast ? 'text-gray-500 dark:text-[#5d8265]' : 'text-slate-900 dark:text-white'}`}>
-                      {new Date(window.start).toLocaleString()} - {new Date(window.end).toLocaleString()}
-                      {isPast && <span className="ml-2 text-xs">(Past)</span>}
-                    </p>
-                  </button>
+                  <div key={index} className="space-y-2">
+                    <button
+                      onClick={() => {
+                        if (!isPast) {
+                          setSelectedWindow(window);
+                          if (isMultiDay) {
+                            // Reset date selection when switching windows
+                            setSelectedDate('');
+                          }
+                        }
+                      }}
+                      disabled={isPast}
+                      className={`w-full text-left p-4 rounded-lg border-2 transition-all ${
+                        isPast
+                          ? 'border-gray-200 dark:border-[#234829] bg-gray-50 dark:bg-[#112214] opacity-60 cursor-not-allowed'
+                          : selectedWindow === window
+                          ? 'border-[#13ec37] bg-[#13ec37]/10 dark:bg-[#13ec37]/20'
+                          : 'border-gray-200 dark:border-[#234829] bg-gray-50 dark:bg-[#112214] hover:border-[#13ec37]/50'
+                      }`}
+                    >
+                      <p className={`font-semibold ${isPast ? 'text-gray-500 dark:text-[#5d8265]' : 'text-slate-900 dark:text-white'}`}>
+                        {new Date(window.start).toLocaleString()} - {new Date(window.end).toLocaleString()}
+                        {isPast && <span className="ml-2 text-xs">(Past)</span>}
+                        {isMultiDay && !isPast && <span className="ml-2 text-xs text-[#13ec37]">(Multi-day - select date below)</span>}
+                      </p>
+                    </button>
+                    
+                    {/* Date Picker for Multi-day Windows */}
+                    {selectedWindow === window && isMultiDay && !isPast && (
+                      <div className="ml-4 p-4 bg-gray-50 dark:bg-[#112214] rounded-lg border border-gray-200 dark:border-[#234829]">
+                        <label className="block text-sm font-medium text-slate-700 dark:text-[#92c99b] mb-2">
+                          Select Pickup Date
+                        </label>
+                        <select
+                          value={selectedDate}
+                          onChange={(e) => setSelectedDate(e.target.value)}
+                          className="w-full px-4 py-2.5 rounded-lg border-gray-300 dark:border-[#234829] bg-white dark:bg-[#102213] text-slate-900 dark:text-white focus:border-[#13ec37] focus:ring-[#13ec37] focus:ring-1 sm:text-sm"
+                        >
+                          <option value="">Choose a date...</option>
+                          {getAvailableDates(window).map((date) => {
+                            const dateObj = new Date(date);
+                            const now = new Date();
+                            now.setHours(0, 0, 0, 0);
+                            const isPastDate = dateObj < now;
+                            
+                            return (
+                              <option key={date} value={date} disabled={isPastDate}>
+                                {dateObj.toLocaleDateString('en-US', { 
+                                  weekday: 'long', 
+                                  year: 'numeric', 
+                                  month: 'long', 
+                                  day: 'numeric' 
+                                })}
+                                {isPastDate && ' (Past)'}
+                              </option>
+                            );
+                          })}
+                        </select>
+                        {selectedDate && (
+                          <p className="text-xs text-[#13ec37] mt-2 flex items-center gap-1">
+                            <span className="material-symbols-outlined text-sm">check_circle</span>
+                            Selected: {new Date(selectedDate).toLocaleDateString('en-US', { 
+                              weekday: 'long', 
+                              year: 'numeric', 
+                              month: 'long', 
+                              day: 'numeric' 
+                            })}
+                          </p>
+                        )}
+                      </div>
+                    )}
+                  </div>
                 );
               })}
             </div>
           </div>
 
           {/* Summary */}
-          {selectedWindow && (
+          {(selectedWindow && (!isMultiDayWindow(selectedWindow) || selectedDate)) && (
             <div className="bg-gray-50 dark:bg-[#112214] rounded-lg p-4 mb-6 border border-gray-200 dark:border-[#234829]">
               <h4 className="font-semibold text-slate-900 dark:text-white mb-2">Order Summary</h4>
               <div className="space-y-1 text-sm">
@@ -350,11 +487,26 @@ function CheckoutContent() {
                   <span className="font-semibold text-slate-900 dark:text-white">{listing.currency} {listing.price.toFixed(2)}</span>
                 </div>
                 <div className="flex justify-between">
-                  <span className="text-gray-600 dark:text-[#92c99b]">Pickup:</span>
+                  <span className="text-gray-600 dark:text-[#92c99b]">Pickup before:</span>
                   <span className="font-semibold text-slate-900 dark:text-white">
-                    {new Date(selectedWindow.start).toLocaleString()}
+                    {finalWindow 
+                      ? new Date(finalWindow.end).toLocaleString()
+                      : new Date(selectedWindow.end).toLocaleString()}
                   </span>
                 </div>
+                {selectedDate && (
+                  <div className="flex justify-between">
+                    <span className="text-gray-600 dark:text-[#92c99b]">Selected date:</span>
+                    <span className="font-semibold text-slate-900 dark:text-white">
+                      {new Date(selectedDate).toLocaleDateString('en-US', { 
+                        weekday: 'long', 
+                        year: 'numeric', 
+                        month: 'long', 
+                        day: 'numeric' 
+                      })}
+                    </span>
+                  </div>
+                )}
                 <div className="flex justify-between pt-2 border-t border-gray-200 dark:border-[#234829]">
                   <span className="text-slate-900 dark:text-white font-bold">Total:</span>
                   <span className="text-emerald-600 dark:text-[#13ec37] font-bold text-lg">
@@ -375,7 +527,7 @@ function CheckoutContent() {
             </Link>
             <button
               onClick={handleConfirmPurchase}
-              disabled={!selectedWindow || submitting}
+              disabled={!selectedWindow || (isMultiDayWindow(selectedWindow) && !selectedDate) || submitting}
               className="flex-1 px-6 py-3 bg-[#13ec37] hover:bg-[#11d832] text-[#112214] rounded-lg transition-all shadow-md hover:shadow-lg font-bold disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
             >
               {submitting ? (
