@@ -108,14 +108,17 @@ function FarmerFeedContent() {
 
   const getCategoryDisplayName = (category: string): string => {
     const categoryMap: Record<string, string> = {
-      'Vegetative Waste': 'Veg Peels',
-      'Vegetative': 'Veg Peels',
+      'Vegetative': 'Vegetative',
+      'Vegetative Waste': 'Vegetative', // Backward compatibility
       'Bakery': 'Bakery',
       'Dairy': 'Dairy',
       'Meat': 'Meat',
-      'Prepared Food': 'Prepared Food',
-      'Beverages': 'Beverages',
-      'Other': 'Other',
+      'Fruit Scraps & Rinds': 'Fruit Scraps & Rinds',
+      'Leafy Greens': 'Leafy Greens',
+      'Others': 'Others',
+      'Other': 'Others', // Backward compatibility
+      'Prepared Food': 'Prepared Food', // Backward compatibility
+      'Beverages': 'Beverages', // Backward compatibility
     };
     return categoryMap[category] || category;
   };

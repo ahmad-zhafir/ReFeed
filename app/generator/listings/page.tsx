@@ -112,10 +112,14 @@ function GeneratorListingsContent() {
 
   const getCategoryIcon = (category: string) => {
     const categoryLower = category.toLowerCase();
-    if (categoryLower.includes('coffee') || categoryLower.includes('ground')) return 'coffee';
-    if (categoryLower.includes('citrus') || categoryLower.includes('peel')) return 'nutrition';
-    if (categoryLower.includes('egg')) return 'egg';
+    if (categoryLower.includes('fruit') || categoryLower.includes('rind')) return 'nutrition';
+    if (categoryLower.includes('leafy') || categoryLower.includes('greens')) return 'local_florist';
+    if (categoryLower.includes('bakery') || categoryLower.includes('grain')) return 'bakery_dining';
+    if (categoryLower.includes('dairy')) return 'lunch_dining';
+    if (categoryLower.includes('meat')) return 'set_meal';
     if (categoryLower.includes('vegetable') || categoryLower.includes('vegetative')) return 'eco';
+    if (categoryLower.includes('coffee') || categoryLower.includes('ground')) return 'coffee';
+    if (categoryLower.includes('egg')) return 'egg';
     return 'recycling';
   };
 

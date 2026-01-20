@@ -149,6 +149,8 @@ function GeneratorListingDetailContent() {
 
   const getCategoryIcon = (category: string) => {
     const categoryLower = category.toLowerCase();
+    if (categoryLower.includes('fruit') || categoryLower.includes('rind')) return 'nutrition';
+    if (categoryLower.includes('leafy') || categoryLower.includes('greens')) return 'local_florist';
     if (categoryLower.includes('vegetative') || categoryLower.includes('vegetable')) return 'eco';
     if (categoryLower.includes('bakery') || categoryLower.includes('grain')) return 'bakery_dining';
     if (categoryLower.includes('dairy')) return 'lunch_dining';

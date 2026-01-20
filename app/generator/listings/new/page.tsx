@@ -16,13 +16,13 @@ import toast from 'react-hot-toast';
 import { useLoadScript, GoogleMap, Marker } from '@react-google-maps/api';
 
 const WASTE_CATEGORIES = [
-  'Vegetative Waste',
+  'Vegetative',
   'Bakery',
   'Dairy',
   'Meat',
-  'Prepared Food',
-  'Beverages',
-  'Other'
+  'Fruit Scraps & Rinds',
+  'Leafy Greens',
+  'Others'
 ];
 
 export default function NewListingPage() {
