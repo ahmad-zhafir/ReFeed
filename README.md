@@ -1,44 +1,69 @@
-# Food Loop
+# ReFeed
 
-A modern, hyperlocal food sharing web application that connects local food donors with claimers in real-time. Help reduce food waste while feeding your community with a beautiful, minimalist interface.
+A modern, hyperlocal food waste redistribution marketplace that connects restaurants (generators) with farmers in real-time. Help reduce food waste while supporting local agriculture with a beautiful, dark-themed interface.
 
-![Food Loop](https://img.shields.io/badge/Next.js-14-black) ![TypeScript](https://img.shields.io/badge/TypeScript-5.5-blue) ![Firebase](https://img.shields.io/badge/Firebase-10.14-orange) ![Tailwind CSS](https://img.shields.io/badge/Tailwind-3.4-38bdf8)
+![ReFeed](https://img.shields.io/badge/Next.js-14-black) ![TypeScript](https://img.shields.io/badge/TypeScript-5.5-blue) ![Firebase](https://img.shields.io/badge/Firebase-12.8-orange) ![Tailwind CSS](https://img.shields.io/badge/Tailwind-3.4-38bdf8)
 
 ---
 
 ## 🚀 Live Demo
 
-Deployment Link: [View Live Deployment](https://food-loop-indol.vercel.app/)
+Deployment Link: [View Live Deployment](https://re-feed-nine.vercel.app/)
 
 ### Testing Credentials
 
 To test the application without creating a new account, use:
 
-- **Email:** user@foodloop.com / user2@foodloop.com  
-- **Password:** foodloop123
+- **Email:** food@refeed.com / farmer@refeed.com  
+- **Password:** refeed123
 
 ---
+## 🚀 Features
 
-## ✨ Features
+### Core Functionality
+- **Role-Based Marketplace**: Two distinct user roles - Generators (Restaurants) and Farmers
+- **User Authentication**: Secure sign-up/login with role selection via Firebase Auth
+- **Interactive Maps**: Real-time Google Maps integration showing available listings and user locations
+- **Smart Location**: Address autocomplete (Google Places) and GPS-based location selection
+- **Real-time Sync**: Instant updates for listings and orders using Firestore
+- **Responsive Design**: Optimized for mobile, tablet, and desktop
 
-- **User Authentication:** Secure sign-up/login via Firebase Auth.  
-- **Donor Dashboard:** Create listings with photos, quantities, and pickup details.  
-- **Interactive Map:** Real-time Google Maps integration showing available food nearby.  
-- **Smart Location:** Address autocomplete (Google Places) and one-click geolocation.  
-- **Real-time Sync:** Instant updates for listings and claims using Firestore.  
-- **Dual Roles:** Seamlessly switch between Donor and Claimer modes.  
-- **Responsive Design:** Optimized for mobile, tablet, and desktop.  
+### Generator (Restaurant) Features
+- **Dashboard**: Overview with active listings, pending orders, total earnings, and impact score
+- **Listing Management**: Create, edit, and delete waste listings with multiple images
+- **Order Tracking**: View and manage reserved, completed, and cancelled orders
+- **ESG Analytics**: Comprehensive sustainability metrics including CO2 saved, waste diversion rate, and cost savings
+- **Find Farmers**: Map view to discover available farmers in your area
+- **Waste Inventory**: Tab-based view of all listings with search functionality
+- **Rating System**: Receive and display ratings from farmers
+
+### Farmer Features
+- **Marketplace Feed**: Browse available organic waste listings with filters (category, price, distance)
+- **Interactive Map**: View listings on a map with bidirectional selection (click card to highlight pin, click pin to highlight card)
+- **Listing Details**: View comprehensive listing information with image gallery
+- **Checkout System**: First-come-first-serve reservation with pickup window selection
+- **Order Management**: Track reserved and completed orders
+- **Schedule View**: Calendar and list views for upcoming pickups
+- **Rating System**: Rate generators after completing pickups
+- **Location Settings**: Adjust location and search radius preferences
+
+### Shared Features
+- **Settings Page**: Manage profile, location, and preferences
+- **Order History**: View all orders with status filters
+- **Schedule Management**: Calendar view for scheduled pickups
+- **Dark Theme**: Modern, consistent dark theme throughout the application
 
 ---
 
 ## 🛠️ Tech Stack
 
-- **Framework:** Next.js 14 (App Router)  
-- **Language:** TypeScript  
-- **Styling:** Tailwind CSS  
-- **Backend:** Firebase (Auth, Firestore, Storage)  
-- **Maps:** Google Maps JavaScript API & Places API  
-- **Notifications:** react-hot-toast  
+- **Framework:** Next.js 14 (App Router)
+- **Language:** TypeScript
+- **Styling:** Tailwind CSS with custom dark theme
+- **Backend:** Firebase (Auth, Firestore, Storage)
+- **Maps:** Google Maps JavaScript API & Places API
+- **Notifications:** react-hot-toast
+- **Icons:** Material Symbols
 
 ---
 
@@ -46,9 +71,9 @@ To test the application without creating a new account, use:
 
 Before running locally, ensure you have:
 
-- Node.js 18+  
-- A Firebase Project (Auth, Firestore, Storage enabled)  
-- A Google Cloud Project (Maps JS API, Places API enabled)  
+- Node.js 18+
+- A Firebase Project (Auth, Firestore, Storage enabled)
+- A Google Cloud Project (Maps JS API, Places API, Geocoding API enabled)
 
 ---
 
@@ -58,8 +83,8 @@ Before running locally, ensure you have:
 
 ```bash
 # Clone the repository
-git clone https://github.com/ahmad-zhafir/FoodLoop.git
-cd food-loop
+git clone <repository-url>
+cd ReFeed
 
 # Install dependencies
 npm install
@@ -81,7 +106,7 @@ NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET=your_project.appspot.com
 NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID=your_sender_id
 NEXT_PUBLIC_FIREBASE_APP_ID=your_firebase_app_id
 
-# Collection Path (optional)
+# Collection Path (for local development)
 NEXT_PUBLIC_USE_SIMPLE_COLLECTION_PATH=true
 NEXT_PUBLIC_APP_ID=your_app_id
 ```
@@ -99,8 +124,8 @@ NEXT_PUBLIC_APP_ID=your_app_id
    - Project Settings → Your apps → Web app
    - Copy the configuration values to `.env.local`
 
-3. **Set Up Firestore**:
-   - Create collections: `listings` and `claims` (or use Canvas path)
+3. **Set Up Firestore Collections**:
+   - Collections: `users`, `listings`, `orders`, `ratings`
    - Set up security rules (see Firebase documentation)
 
 4. **Set Up Storage**:
@@ -129,6 +154,8 @@ npm run dev
 
 Open [http://localhost:3000](http://localhost:3000) in your browser.
 
+---
+
 ## 📁 Project Structure
 
 ```
@@ -136,72 +163,177 @@ Open [http://localhost:3000](http://localhost:3000) in your browser.
 │   ├── api/
 │   │   ├── geocode/              # Geocoding API route
 │   │   └── reverse-geocode/      # Reverse geocoding API route
-│   ├── claimer/                  # Claimer map view page
-│   │   └── page.tsx
-│   ├── donor/                    # Donor dashboard page
-│   │   └── page.tsx
+│   ├── farmer/                    # Farmer pages
+│   │   ├── page.tsx              # Farmer dashboard/feed
+│   │   ├── listings/            # Listing detail pages
+│   │   ├── checkout/             # Checkout pages
+│   │   └── map/                  # Map view page
+│   ├── generator/                 # Generator (Restaurant) pages
+│   │   ├── page.tsx              # Generator dashboard
+│   │   └── listings/            # Listing management pages
+│   ├── onboarding/               # Onboarding flow
+│   │   ├── role/                 # Role selection
+│   │   └── location/             # Location setup
 │   ├── login/                    # Authentication page
-│   │   └── page.tsx
-│   ├── layout.tsx                # Root layout with Toaster
-│   ├── page.tsx                  # Home page
+│   ├── orders/                   # Order history page
+│   ├── schedule/                 # Schedule/calendar page
+│   ├── settings/                 # Settings page
+│   ├── layout.tsx                # Root layout
+│   ├── page.tsx                  # Landing page
 │   └── globals.css               # Global styles
 ├── components/
-│   ├── AuthGuard.tsx             # Authentication guard component
-│   ├── ClaimModal.tsx            # Claim quantity modal
-│   ├── Logo.tsx                  # Logo component
-│   ├── MapView.tsx               # Google Maps component
-│   └── MyClaimCard.tsx           # Claim card component
+│   ├── AuthGuard.tsx             # Authentication guard
+│   ├── RoleGuard.tsx             # Role-based access control
+│   ├── RatingModal.tsx           # Rating submission modal
+│   ├── RatingDisplay.tsx         # Rating display component
+│   ├── MapView.tsx               # Generic map component
+│   ├── FarmerMapView.tsx         # Farmer map for generators
+│   ├── FarmerListingMap.tsx      # Listing map for farmers
+│   ├── ImageCarousel.tsx         # Image gallery component
+│   └── Logo.tsx                  # Logo component
 ├── lib/
-│   ├── constants.ts               # Collection paths and constants
-│   ├── firebase.ts                # Firebase initialization
-│   ├── types.ts                   # TypeScript interfaces
-│   └── userProfile.ts             # User profile utilities
+│   ├── constants.ts              # Collection paths and constants
+│   ├── firebase.ts               # Firebase initialization
+│   ├── types.ts                  # TypeScript interfaces
+│   └── userProfile.ts            # User profile utilities
 └── package.json
 ```
 
+---
+
 ## 🎯 Usage
 
-### As a Donor
+### As a Generator (Restaurant)
 
-1. **Sign Up/Login**: Create an account or sign in
-2. **Navigate to Donor Page**: Click "I'm a Donor" on the home page
-3. **Create Listing**:
-   - Fill in food title and quantity
-   - Enter pickup address (with autocomplete) or use current location
-   - Upload a photo or provide image URL
-   - Click "Create Listing"
-4. **Manage Listings**: View all your listings in "My Listings" section
-   - See status (active/claimed)
-   - View claims on your listings
-   - Track remaining quantities
+1. **Sign Up**: Create an account and select "Restaurant" role
+2. **Set Location**: Configure your restaurant location during onboarding
+3. **Create Listings**:
+   - Navigate to Dashboard → Add Listing
+   - Select waste category (Vegetative, Bakery, Dairy, Meat, Fruit Scraps & Rinds, Leafy Greens, Others)
+   - Upload multiple images
+   - Enter details (title, weight, price, notes)
+   - Set pickup address with interactive map
+   - Configure pickup windows (one-time or recurring)
+   - Publish listing
+4. **Manage Listings**: View, edit, or delete listings in Waste Inventory tab
+5. **Track Orders**: Monitor reserved and completed orders
+6. **View Analytics**: Check ESG metrics and impact score
+7. **Find Farmers**: Discover available farmers on the map
 
-### As a Claimer
+### As a Farmer
 
-1. **Sign Up/Login**: Create an account or sign in
-2. **Navigate to Claimer Page**: Click "I'm a Claimer" on the home page
-3. **Browse Listings**: 
-   - View available food on the interactive map
-   - Click on map markers to see details
-   - Browse listings in the sidebar
-4. **Claim Food**:
-   - Click "Claim This Item" on a listing
-   - Enter quantity to claim
-   - Confirm claim
-5. **Track Claims**: View all your claims in "My Claims" section
+1. **Sign Up**: Create an account and select "Farmer" role
+2. **Set Location**: Configure your location and search radius during onboarding
+3. **Browse Listings**:
+   - View available organic waste on the marketplace feed
+   - Filter by category, price, and distance
+   - Use interactive map to explore listings
+4. **View Listing Details**: Click on a listing to see full details and image gallery
+5. **Reserve Listing**:
+   - Select a pickup window
+   - For multi-day windows, choose a specific date
+   - Confirm reservation (first-come-first-serve)
+6. **Manage Orders**: Track reserved and completed orders
+7. **Schedule Pickups**: View upcoming pickups in calendar or list view
+8. **Rate Generators**: Rate your experience after completing a pickup
 
+---
 
-## 📝 Notes
+## 🔐 Data Model
 
-- The app uses real-time Firestore listeners for instant updates
-- Map defaults to Malaysia when no listings are available
-- Images are stored in Firebase Storage
-- Address autocomplete requires Places API to be enabled
-- All user data is stored in Firestore
+### User Profile
+- Basic info (name, email, contact)
+- Role (generator/farmer)
+- Location (latitude, longitude, address)
+- Search radius (farmers only)
+- Rating fields (averageRating, totalRatings)
+
+### Listing
+- Generator information
+- Category, title, weight, notes
+- Price and currency
+- Location (address, coordinates)
+- Images (primary + additional)
+- Pickup windows (start/end times)
+- Status (live/reserved/completed/expired/cancelled)
+
+### Order
+- Links to listing and users
+- Scheduled pickup window
+- Payment method
+- Status (reserved/completed/cancelled)
+- Snapshot fields for history
+- Rating ID (if rated)
+
+### Rating
+- Links to order, listing, and users
+- Rating (1-5 stars)
+- Optional comment
+- Timestamps
+
+---
+
+## 🎨 Design System
+
+The application uses a custom dark theme with:
+- **Primary Color:** `#13ec37` (Green)
+- **Background:** `#102213` (Dark Green)
+- **Cards:** `#1c2e20` (Surface Dark)
+- **Borders:** `#234829` (Border Dark)
+- **Text Secondary:** `#92c99b` (Light Green)
+
+---
+
+## 📝 Key Features Explained
+
+### Rating System
+- Farmers can rate generators after completing a pickup
+- One rating per completed order
+- Average rating automatically calculated and displayed
+- Ratings shown on generator profiles and listing cards
+
+### First-Come-First-Serve (FCFS)
+- Atomic transaction system prevents double-booking
+- Listings are reserved immediately upon confirmation
+- Only one farmer can reserve a listing at a time
+
+### Multi-Day Pickup Windows
+- For pickup windows spanning multiple days
+- Farmers can select a specific date within the window
+- System validates date selection
+
+### Location Management
+- Both generators and farmers can adjust their location
+- Interactive map picker with address autocomplete
+- GPS-based location capture
+- Search radius configuration for farmers
+
+---
+
+## 🚀 Deployment
+
+### Vercel Deployment
+
+1. Push code to GitHub
+2. Import project in Vercel
+3. Add environment variables
+4. Deploy
+
+The application is configured for production builds with TypeScript type checking.
+
+---
 
 ## 🤝 Contributing
 
 Contributions are welcome! Please feel free to submit a Pull Request.
 
+---
+
+## 📄 License
+
+This project is private and proprietary.
+
+---
 
 ## 🙏 Acknowledgments
 
@@ -209,7 +341,8 @@ Contributions are welcome! Please feel free to submit a Pull Request.
 - Google Maps for mapping functionality
 - Next.js team for the amazing framework
 - Tailwind CSS for styling utilities
+- Material Symbols for icons
 
 ---
 
-**Made with ❤️ for reducing food waste and connecting communities**
+**Made with ❤️ for reducing food waste and supporting local agriculture**
