@@ -3,8 +3,8 @@ import "./globals.css";
 import { Toaster } from "react-hot-toast";
 
 export const metadata: Metadata = {
-  title: "Food Loop",
-  description: "Connect local food donors with claimers in real-time",
+  title: "ReFeed",
+  description: "Connect local food generators with farmers in real-time to reduce food waste",
 };
 
 export default function RootLayout({
