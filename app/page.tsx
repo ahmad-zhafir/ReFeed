@@ -7,7 +7,6 @@ import { User } from 'firebase/auth';
 import { UserProfile } from '@/lib/types';
 import { getUserProfile } from '@/lib/userProfile';
 import Link from 'next/link';
-import Image from 'next/image';
 
 export default function Home() {
   const router = useRouter();
@@ -92,9 +91,6 @@ export default function Home() {
               </Link>
               <Link href="#impact" className="text-white/90 hover:text-[#13ec37] transition-colors text-sm font-medium leading-normal">
                 Impact
-              </Link>
-              <Link href="#partners" className="text-white/90 hover:text-[#13ec37] transition-colors text-sm font-medium leading-normal">
-                Partners
               </Link>
             </div>
             {user && userProfile ? (
@@ -222,32 +218,7 @@ export default function Home() {
 
           {/* Trust Indicator */}
           <div className="flex flex-col items-center gap-4 pt-4 border-t border-white/10 w-full max-w-xs">
-            <div className="flex items-center gap-4">
-              <div className="flex -space-x-3">
-                <Image
-                  alt="User avatar"
-                  className="w-10 h-10 rounded-full border-2 border-white/10 object-cover"
-                  src="https://lh3.googleusercontent.com/aida-public/AB6AXuAPQRKxhk5I4kb2KTf2EzYyJBJr9Ad_BvkdDBbRhJDyQW-RW1K0j8bnLImYzq4mohhMn2FF0AcjIrmIy7IpOtDH9k285AJ1tCvcmFwalvpt1wJ2h47p_lr0o4_YQ2GE6_s3qq5MFia-rVNYFG0g8pjYsuPiQyTJGmIgym8YdVCCg2GqOibrtpoOkEkuXZX1owcNoEnPPipAC710HqtZ-ELD2JPTs4E6aAL4IKUqgKuz-tB25IHBVxzQkw4P1vvVwobIl08oL19kQrs"
-                  width={40}
-                  height={40}
-                />
-                <Image
-                  alt="User avatar"
-                  className="w-10 h-10 rounded-full border-2 border-white/10 object-cover"
-                  src="https://lh3.googleusercontent.com/aida-public/AB6AXuA-tNdrH4oUqhc8YnGOniS3a_eUoh5h9Cfzo9z27PInJc25RGSvB-z8Q_CbAlVrARiny5HPpNxfvK3blJN7Jd9H8zPQYrza1qtC7lmxbahdoxjfWiYLJ5SmjdFJtjyZGYLjmFfBNHEmpRouvQ6XKOqJIXF53JqjyVU1qAZUhoSwNUbomJ93sxS8_qmIDV6h_SG3ZK2Lr0hz-nA3gpNBuKPB2sXPybxU1xXGWQJC17Z8fIlWSdPfr4z0Mj7CuggbbPYdHPAmwO4-DMQ"
-                  width={40}
-                  height={40}
-                />
-                <Image
-                  alt="User avatar"
-                  className="w-10 h-10 rounded-full border-2 border-white/10 object-cover"
-                  src="https://lh3.googleusercontent.com/aida-public/AB6AXuD8jv1KTaBhuJwyg0ezV3JHPFOsfepgDSGoJ5HKcbZdp-9kP_druc4F8rIUXYol8zduaqJ2Yn5MRHdgoaj8RK_ptGfVJvCElP_ut1LxPJAjvR2X5nvwQTjmBvRqqTnnLqIuOYkAYt6TYMIHKtYGpFfT7vbdq2qr6i8M72fKbTwbgmq_RmCPCk8ExDm4AF7Eww7MBuSsXEU_lxtvss0KfEmE7mp1A0FDRx1PmnSUKctvRm53Mt4ubDZBf_3EfJdK6uf07gva4q2jTT4"
-                  width={40}
-                  height={40}
-                />
-              </div>
-              <span className="text-sm font-medium text-white/90">Trusted by 2,000+ partners</span>
-            </div>
+            <span className="text-sm font-medium text-white/90">Powered by CodeCraft Tech</span>
           </div>
         </div>
 

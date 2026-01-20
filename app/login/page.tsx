@@ -132,9 +132,6 @@ function LoginForm() {
               <Link href="#impact" className="text-white/90 hover:text-[#13ec37] transition-colors text-sm font-medium leading-normal">
                 Impact
               </Link>
-              <Link href="#partners" className="text-white/90 hover:text-[#13ec37] transition-colors text-sm font-medium leading-normal">
-                Partners
-              </Link>
             </div>
           </nav>
 
