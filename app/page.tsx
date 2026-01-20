@@ -187,43 +187,45 @@ export default function Home() {
         {/* Dark Overlay */}
         <div className="absolute inset-0 z-0 bg-black/60"></div>
 
-        {/* Content */}
-        <div className="relative z-10 w-full max-w-4xl px-6 flex flex-col items-center text-center py-12 md:py-20">
-          {/* Sustainable Ecosystem Badge */}
-          <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-[#13ec37]/10 border border-[#13ec37]/20 backdrop-blur-md mb-8">
-            <span className="material-symbols-outlined text-[#13ec37] text-sm">recycling</span>
-            <span className="text-[#13ec37] text-xs font-bold uppercase tracking-wider">Sustainable Ecosystem</span>
-          </div>
+        {/* Content Wrapper - Centers on large screens, scrollable on medium/small */}
+        <div className="relative z-10 w-full flex flex-col items-center min-h-screen pt-12 md:pt-16 xl:justify-center xl:pt-20 pb-20 md:pb-24">
+          <div className="w-full max-w-4xl px-6 flex flex-col items-center text-center">
+            {/* Sustainable Ecosystem Badge */}
+            <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-[#13ec37]/10 border border-[#13ec37]/20 backdrop-blur-md mb-6 md:mb-8">
+              <span className="material-symbols-outlined text-[#13ec37] text-sm">recycling</span>
+              <span className="text-[#13ec37] text-xs font-bold uppercase tracking-wider">Sustainable Ecosystem</span>
+            </div>
 
-          {/* Main Headline */}
-          <h1 className="text-white text-5xl md:text-6xl lg:text-7xl font-black leading-[1.1] tracking-tight mb-6">
-            Reduce waste, <br/>
-            <span className="text-transparent bg-clip-text bg-gradient-to-r from-[#13ec37] to-green-400">maximize value.</span>
-          </h1>
+            {/* Main Headline */}
+            <h1 className="text-white text-5xl md:text-6xl lg:text-7xl font-black leading-[1.1] tracking-tight mb-4 md:mb-6">
+              Reduce waste, <br/>
+              <span className="text-transparent bg-clip-text bg-gradient-to-r from-[#13ec37] to-green-400">maximize value.</span>
+            </h1>
 
-          {/* Description */}
-          <p className="text-white/90 text-lg md:text-xl font-light leading-relaxed max-w-2xl mb-10">
-            Connect directly with local farmers to reduce food waste. Join the circular economy platform that powers the future of food.
-          </p>
+            {/* Description */}
+            <p className="text-white/90 text-lg md:text-xl font-light leading-relaxed max-w-2xl mb-8 md:mb-10">
+              Connect directly with local farmers to reduce food waste. Join the circular economy platform that powers the future of food.
+            </p>
 
-          {/* Get Started Button */}
-          <div className="flex flex-col sm:flex-row gap-4 mb-12">
-            <button
-              onClick={handleGetStarted}
-              className="flex items-center justify-center cursor-pointer rounded-lg px-8 py-4 bg-[#13ec37] hover:bg-[#0fd630] text-[#102213] text-lg font-bold leading-normal transition-all shadow-[0_0_20px_rgba(19,236,55,0.4)] hover:shadow-[0_0_30px_rgba(19,236,55,0.6)] hover:-translate-y-0.5"
-            >
-              Get Started
-            </button>
-          </div>
+            {/* Get Started Button */}
+            <div className="flex flex-col sm:flex-row gap-4 mb-8 md:mb-12">
+              <button
+                onClick={handleGetStarted}
+                className="flex items-center justify-center cursor-pointer rounded-lg px-8 py-4 bg-[#13ec37] hover:bg-[#0fd630] text-[#102213] text-lg font-bold leading-normal transition-all shadow-[0_0_20px_rgba(19,236,55,0.4)] hover:shadow-[0_0_30px_rgba(19,236,55,0.6)] hover:-translate-y-0.5"
+              >
+                Get Started
+              </button>
+            </div>
 
-          {/* Trust Indicator */}
-          <div className="flex flex-col items-center gap-4 pt-4 border-t border-white/10 w-full max-w-xs mb-8">
-            <span className="text-sm font-medium text-white/90">Powered by CodeCraft Tech</span>
+            {/* Trust Indicator */}
+            <div className="flex flex-col items-center gap-4 pt-4 border-t border-white/10 w-full max-w-xs mb-6 md:mb-8">
+              <span className="text-sm font-medium text-white/90">Powered by CodeCraft Tech</span>
+            </div>
           </div>
         </div>
 
-        {/* Footer */}
-        <div className="relative z-10 w-full flex justify-center gap-8 text-xs font-medium text-white/60 pb-6">
+        {/* Footer - Fixed at bottom */}
+        <div className="absolute bottom-6 left-0 right-0 z-10 flex justify-center gap-8 text-xs font-medium text-white/60">
           <Link href="#help" className="hover:text-[#13ec37] transition-colors">Help Center</Link>
           <Link href="#status" className="hover:text-[#13ec37] transition-colors">Platform Status</Link>
           <Link href="#privacy" className="hover:text-[#13ec37] transition-colors">Privacy Policy</Link>
