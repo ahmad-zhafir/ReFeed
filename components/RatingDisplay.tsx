@@ -38,39 +38,30 @@ export default function RatingDisplay({
     lg: 'text-xl',
   };
 
-  const fullStars = Math.floor(numericRating);
-  const hasHalfStar = numericRating % 1 >= 0.5;
-  const emptyStars = 5 - fullStars - (hasHalfStar ? 1 : 0);
+  const starScale = {
+    sm: 'scale-75',
+    md: 'scale-100',
+    lg: 'scale-100',
+  };
 
   return (
     <div className="flex items-center gap-2">
-      <div className="flex items-center gap-0.5">
-        {/* Full stars */}
-        {Array.from({ length: fullStars }).map((_, i) => (
-          <span
-            key={`full-${i}`}
-            className={`material-symbols-outlined ${starSize[size]} text-yellow-400 fill-yellow-400`}
-          >
-            star
-          </span>
-        ))}
-        
-        {/* Half star */}
-        {hasHalfStar && (
-          <span className={`material-symbols-outlined ${starSize[size]} text-yellow-400 fill-yellow-400`}>
-            star_half
-          </span>
-        )}
-        
-        {/* Empty stars */}
-        {Array.from({ length: emptyStars }).map((_, i) => (
-          <span
-            key={`empty-${i}`}
-            className={`material-symbols-outlined ${starSize[size]} text-gray-300 dark:text-[#5d8265]`}
-          >
-            star
-          </span>
-        ))}
+      <div className="flex items-center gap-0">
+        {Array.from({ length: 5 }).map((_, i) => {
+          const fillRatio = Math.max(0, Math.min(1, numericRating - i));
+          const isPartialStar = fillRatio > 0 && fillRatio < 1;
+          return (
+            <span key={`star-${i}`} className={`relative inline-block leading-none -mr-[2px] ${starSize[size]}`}>
+              <span className={`material-symbols-outlined inline-block origin-left transform-gpu ${starScale[size]} text-gray-400 dark:text-[#48664e]`}>star</span>
+              <span
+                className="absolute inset-y-0 left-0 overflow-hidden whitespace-nowrap"
+                style={{ width: `${fillRatio * 100}%` }}
+              >
+                <span className={`material-symbols-outlined inline-block origin-left transform-gpu ${starScale[size]} ${isPartialStar ? 'text-amber-400' : 'text-yellow-400'} fill-current`}>star</span>
+              </span>
+            </span>
+          );
+        })}
       </div>
       
       <div className="flex items-center gap-1.5">

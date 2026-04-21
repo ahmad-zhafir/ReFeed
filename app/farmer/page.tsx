@@ -141,6 +141,21 @@ function FarmerFeedContent() {
     return 'Good Quality';
   };
 
+  const isListingNotExpired = (listing: MarketplaceListing): boolean => {
+    if (!listing.expiryAt) {
+      // Fall back to pickup windows when explicit expiry is missing.
+      return listing.pickupWindows?.some((window) => new Date(window.end) > new Date()) ?? false;
+    }
+
+    const expiryDate = new Date(listing.expiryAt);
+    if (Number.isNaN(expiryDate.getTime())) {
+      return listing.pickupWindows?.some((window) => new Date(window.end) > new Date()) ?? false;
+    }
+
+    const hasUpcomingWindow = listing.pickupWindows?.some((window) => new Date(window.end) > new Date()) ?? false;
+    return expiryDate > new Date() && hasUpcomingWindow;
+  };
+
   // Get unique categories for filter chips
   const uniqueCategories = Array.from(new Set(listings.map(l => l.category)));
 
@@ -174,11 +189,12 @@ function FarmerFeedContent() {
         id: doc.id,
         ...doc.data(),
       })) as MarketplaceListing[];
-      setListings(listingsData);
+      const activeListings = listingsData.filter(isListingNotExpired);
+      setListings(activeListings);
 
       // Load generator profiles for ratings
       const profiles: Record<string, UserProfile> = {};
-      const uniqueGeneratorUids = Array.from(new Set(listingsData.map(l => l.generatorUid)));
+      const uniqueGeneratorUids = Array.from(new Set(activeListings.map(l => l.generatorUid)));
       
       for (const generatorUid of uniqueGeneratorUids) {
         try {

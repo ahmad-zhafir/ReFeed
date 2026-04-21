@@ -38,6 +38,39 @@ function GeneratorDashboardContent() {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
 
+  const hasUpcomingPickupWindow = (listing: MarketplaceListing): boolean => {
+    if (!listing.pickupWindows || listing.pickupWindows.length === 0) {
+      return false;
+    }
+
+    const now = new Date();
+    return listing.pickupWindows.some((window) => {
+      const endTime = new Date(window.end);
+      return !Number.isNaN(endTime.getTime()) && endTime > now;
+    });
+  };
+
+  const shouldAutoExpireListing = (listing: MarketplaceListing): boolean => {
+    if (listing.status !== 'live') {
+      return false;
+    }
+
+    // Keep reserved listings out of auto-expire from this client flow.
+    if (listing.reservedBy) {
+      return false;
+    }
+
+    const hasUpcomingWindow = hasUpcomingPickupWindow(listing);
+    const isExpiryElapsed = (() => {
+      if (!listing.expiryAt) return false;
+      const expiryDate = new Date(listing.expiryAt);
+      if (Number.isNaN(expiryDate.getTime())) return false;
+      return expiryDate <= new Date();
+    })();
+
+    return isExpiryElapsed || !hasUpcomingWindow;
+  };
+
   useEffect(() => {
     const unsubscribe = onAuthStateChange(async (currentUser) => {
       if (currentUser) {
@@ -65,12 +98,30 @@ function GeneratorDashboardContent() {
       const listingsRef = collection(db, getListingsCollectionPath());
       const q = query(listingsRef, where('generatorUid', '==', generatorUid));
 
-      const unsubscribe = onSnapshot(q, (snapshot) => {
+      const unsubscribe = onSnapshot(q, async (snapshot) => {
         const listingsData = snapshot.docs.map((doc) => ({
           id: doc.id,
           ...doc.data(),
         })) as MarketplaceListing[];
-        setListings(listingsData);
+
+        const db = getFirestoreDb();
+        const listingsToExpire = listingsData.filter(shouldAutoExpireListing);
+
+        if (listingsToExpire.length > 0) {
+          await Promise.all(
+            listingsToExpire.map((listing) =>
+              updateDoc(doc(db, getListingsCollectionPath(), listing.id), { status: 'expired' })
+            )
+          );
+        }
+
+        const normalizedListings = listingsData.map((listing) =>
+          listingsToExpire.some((expiredListing) => expiredListing.id === listing.id)
+            ? { ...listing, status: 'expired' as const }
+            : listing
+        );
+
+        setListings(normalizedListings);
       });
 
       return unsubscribe;
@@ -389,7 +440,7 @@ function GeneratorDashboardContent() {
       default:
         return (
           <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium bg-gray-500/10 text-gray-500 border border-gray-500/20">
-            <span className="size-1.5 rounded-full bg-gray-500"></span> {status}
+            <span className="size-1.5 rounded-full bg-gray-500"></span> {status.charAt(0).toUpperCase() + status.slice(1)}
           </span>
         );
     }
@@ -531,7 +582,7 @@ function GeneratorDashboardContent() {
               <div className="bg-center bg-no-repeat bg-cover rounded-full size-10 border-2 border-[#234829] shrink-0 bg-gradient-to-br from-[#13ec37] to-green-400 flex items-center justify-center">
                 <span className="text-[#102213] font-bold text-sm">{userProfile?.name?.charAt(0).toUpperCase() || 'R'}</span>
               </div>
-              <div className="flex flex-col overflow-hidden">
+              <div className="flex min-w-0 flex-col">
                 <h1 className="text-white text-sm font-bold leading-tight truncate">{userProfile?.name || 'Restaurant'}</h1>
                 <p className="text-[#92c99b] text-[10px] font-normal uppercase tracking-wide">Restaurant Admin</p>
                 {userProfile?.averageRating && userProfile.averageRating > 0 && (
@@ -539,6 +590,7 @@ function GeneratorDashboardContent() {
                     <RatingDisplay 
                       rating={userProfile.averageRating} 
                       totalRatings={userProfile.totalRatings}
+                      showCount={false}
                       size="sm"
                     />
                   </div>
