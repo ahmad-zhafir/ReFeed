@@ -2,6 +2,7 @@
 
 import React from 'react';
 import Link from 'next/link';
+import Image from 'next/image';
 import { signOut } from '@/lib/firebase';
 import { UserProfile } from '@/lib/types';
 import toast from 'react-hot-toast';
@@ -47,15 +48,7 @@ export function GeneratorHeader({
         <div className="flex items-center justify-between h-16 gap-4">
           <Link href="/generator" className="flex items-center gap-3">
             <div className="relative size-8">
-              <div className="absolute inset-0 rounded-full border border-dashed" style={{ borderColor: 'var(--rf-sap)' }} />
-              <div
-                className="absolute inset-1 rounded-full flex items-center justify-center"
-                style={{ background: 'var(--rf-sap)', color: 'var(--rf-forest)' }}
-              >
-                <svg viewBox="0 0 48 48" className="size-3.5" fill="currentColor">
-                  <path d="M42.4 44s-6.4-10.1-1.3-20C46.9 12.9 42.2 4 42.2 4H7s4.7 8.9-1 20C.9 33.9 7.3 44 7.3 44h35.1z" />
-                </svg>
-              </div>
+              <Image src="/images/logo.svg" alt="ReFeed logo" fill sizes="32px" priority className="object-contain" />
             </div>
             <div className="flex flex-col leading-none">
               <h2 className="font-fraunces fraunces-wonk text-lg font-black tracking-[-0.03em]">

@@ -7,6 +7,7 @@ import { doc, setDoc } from 'firebase/firestore';
 import { MarketplaceRole } from '@/lib/types';
 import { getUserProfile } from '@/lib/userProfile';
 import Link from 'next/link';
+import Image from 'next/image';
 
 function LoginForm() {
   const router = useRouter();
@@ -83,13 +84,7 @@ function LoginForm() {
              style={{ borderColor: 'rgba(241,234,216,.10)' }}>
         <Link href="/" className="flex items-center gap-3 group">
           <div className="relative size-10">
-            <div className="absolute inset-0 rounded-full border border-dashed" style={{ borderColor: 'var(--rf-sap)' }} />
-            <div className="absolute inset-1 rounded-full flex items-center justify-center"
-                 style={{ background: 'var(--rf-sap)', color: 'var(--rf-forest)' }}>
-              <svg viewBox="0 0 48 48" className="size-5" fill="currentColor">
-                <path d="M42.4 44s-6.4-10.1-1.3-20C46.9 12.9 42.2 4 42.2 4H7s4.7 8.9-1 20C.9 33.9 7.3 44 7.3 44h35.1z" />
-              </svg>
-            </div>
+            <Image src="/images/logo.svg" alt="ReFeed logo" fill sizes="40px" priority className="object-contain" />
           </div>
           <div className="flex flex-col leading-none">
             <h2 className="font-fraunces fraunces-wonk text-2xl font-black tracking-[-0.03em]">
@@ -146,11 +141,8 @@ function LoginForm() {
       <main className="relative z-10 flex-1 flex items-start lg:items-center justify-center px-6 py-16 lg:py-10 overflow-y-auto">
         <div className="w-full max-w-md">
           <Link href="/" className="lg:hidden flex items-center gap-3 mb-10">
-            <div className="size-9 rounded-full flex items-center justify-center"
-                 style={{ background: 'var(--rf-sap)', color: 'var(--rf-forest)' }}>
-              <svg viewBox="0 0 48 48" className="size-4" fill="currentColor">
-                <path d="M42.4 44s-6.4-10.1-1.3-20C46.9 12.9 42.2 4 42.2 4H7s4.7 8.9-1 20C.9 33.9 7.3 44 7.3 44h35.1z" />
-              </svg>
+            <div className="relative size-9">
+              <Image src="/images/logo.svg" alt="ReFeed logo" fill sizes="36px" priority className="object-contain" />
             </div>
             <h2 className="font-fraunces fraunces-wonk text-2xl font-black tracking-[-0.03em]">
               Re<span className="italic font-light" style={{ color: 'var(--rf-sap)' }}>Feed</span>

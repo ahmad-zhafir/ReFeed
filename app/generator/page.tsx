@@ -12,6 +12,7 @@ import FarmerMapView from '@/components/FarmerMapView';
 import RatingDisplay from '@/components/RatingDisplay';
 import RoleGuard from '@/components/RoleGuard';
 import Link from 'next/link';
+import Image from 'next/image';
 import toast from 'react-hot-toast';
 
 export default function GeneratorDashboard() {
@@ -499,12 +500,7 @@ function GeneratorDashboardContent() {
         <div className="px-6 md:px-10 py-3 flex items-center justify-between w-full">
           <Link href="/generator" className="flex items-center gap-3 cursor-pointer">
             <div className="relative size-9">
-              <div className="absolute inset-0 rounded-full border border-dashed" style={{ borderColor: 'var(--rf-sap)' }} />
-              <div className="absolute inset-1 rounded-full flex items-center justify-center" style={{ background: 'var(--rf-sap)', color: 'var(--rf-forest)' }}>
-                <svg viewBox="0 0 48 48" className="size-4" fill="currentColor">
-                  <path d="M42.4 44s-6.4-10.1-1.3-20C46.9 12.9 42.2 4 42.2 4H7s4.7 8.9-1 20C.9 33.9 7.3 44 7.3 44h35.1z" />
-                </svg>
-              </div>
+              <Image src="/images/logo.svg" alt="ReFeed logo" fill sizes="36px" priority className="object-contain" />
             </div>
             <div className="flex flex-col leading-none">
               <h2 className="font-fraunces fraunces-wonk text-xl font-black tracking-[-0.03em]">
