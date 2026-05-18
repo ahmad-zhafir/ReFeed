@@ -27,6 +27,7 @@ function OrdersContent() {
   const [user, setUser] = useState<User | null>(null);
   const [userProfile, setUserProfile] = useState<UserProfile | null>(null);
   const [orders, setOrders] = useState<MarketplaceOrder[]>([]);
+  const [counterpartyProfiles, setCounterpartyProfiles] = useState<Record<string, UserProfile>>({});
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState<'reserved' | 'completed' | 'cancelled'>('reserved');
   const [profileDropdownOpen, setProfileDropdownOpen] = useState(false);
@@ -78,6 +79,41 @@ function OrdersContent() {
     );
     return () => unsub();
   }, [user, userProfile?.role]);
+
+  // Resolve counterparty names so the rating modal (and any future "from X" labels)
+  // can show a real kitchen/farmer name rather than a raw Firestore UID.
+  useEffect(() => {
+    if (!userProfile?.role || orders.length === 0) return;
+    const role = userProfile.role;
+    const counterpartyUids = Array.from(
+      new Set(
+        orders
+          .map((o) => (role === 'farmer' ? o.generatorUid : o.farmerUid))
+          .filter((uid): uid is string => !!uid),
+      ),
+    );
+    const missing = counterpartyUids.filter((uid) => !counterpartyProfiles[uid]);
+    if (missing.length === 0) return;
+
+    let cancelled = false;
+    (async () => {
+      const fetched: Record<string, UserProfile> = {};
+      for (const uid of missing) {
+        try {
+          const p = await getUserProfile(uid);
+          if (p) fetched[uid] = p;
+        } catch (e) {
+          console.error(`Failed to load profile for ${uid}`, e);
+        }
+      }
+      if (!cancelled && Object.keys(fetched).length > 0) {
+        setCounterpartyProfiles((prev) => ({ ...prev, ...fetched }));
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [orders, userProfile?.role, counterpartyProfiles]);
 
   const markCompleted = async (_orderId: string) => {
     toast.success('Order marked as completed');
@@ -173,7 +209,7 @@ function OrdersContent() {
           onClose={() => { setRatingModalOpen(false); setSelectedOrderForRating(null); }}
           orderId={selectedOrderForRating.id}
           listingTitle={selectedOrderForRating.title}
-          generatorName={selectedOrderForRating.generatorUid}
+          generatorName={counterpartyProfiles[selectedOrderForRating.generatorUid]?.name}
           farmerUid={user?.uid || ''}
           onRatingSubmitted={() => {
             // The onSnapshot listener will pick up the rating write automatically.

@@ -159,74 +159,12 @@ export default function FarmerListingMap({
           }, 300);
         }}
       options={{
-        styles: [
-          {
-            featureType: 'all',
-            elementType: 'geometry',
-            stylers: [{ color: '#1a2f1d' }], // --rf-moss (Maps API needs literal hex)
-          },
-          {
-            featureType: 'all',
-            elementType: 'labels.text.fill',
-            stylers: [{ color: '#ffffff', visibility: 'on' }],
-          },
-          {
-            featureType: 'all',
-            elementType: 'labels.text.stroke',
-            stylers: [{ color: '#000000', weight: 0.5 }],
-          },
-          {
-            featureType: 'all',
-            elementType: 'labels.icon',
-            stylers: [{ visibility: 'on' }],
-          },
-          {
-            featureType: 'water',
-            elementType: 'geometry',
-            stylers: [{ color: '#1a2f1d' }], // --rf-moss (Maps API needs literal hex)
-          },
-          {
-            featureType: 'water',
-            elementType: 'labels.text.fill',
-            stylers: [{ color: '#ffffff' }],
-          },
-          {
-            featureType: 'road',
-            elementType: 'labels.text.fill',
-            stylers: [{ color: '#ffffff' }],
-          },
-          {
-            featureType: 'road',
-            elementType: 'labels.text.stroke',
-            stylers: [{ color: '#000000', weight: 0.5 }],
-          },
-          {
-            featureType: 'poi',
-            elementType: 'labels.text.fill',
-            stylers: [{ color: '#ffffff' }],
-          },
-          {
-            featureType: 'poi',
-            elementType: 'labels.text.stroke',
-            stylers: [{ color: '#000000', weight: 0.5 }],
-          },
-          {
-            featureType: 'administrative',
-            elementType: 'labels.text.fill',
-            stylers: [{ color: '#ffffff' }],
-          },
-          {
-            featureType: 'administrative',
-            elementType: 'labels.text.stroke',
-            stylers: [{ color: '#000000', weight: 0.5 }],
-          },
-        ],
+        // Default Google Maps appearance — no custom dark/green styler.
         disableDefaultUI: false,
         zoomControl: true,
         streetViewControl: false,
         mapTypeControl: false,
         fullscreenControl: false,
-        // Fix blurry text
         gestureHandling: 'auto',
         mapTypeId: 'roadmap',
       }}
