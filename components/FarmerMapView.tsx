@@ -114,7 +114,7 @@ export default function FarmerMapView({
 
   if (loadError) {
     return (
-      <div className="flex items-center justify-center h-full bg-[#1c2e20] text-white">
+      <div className="flex items-center justify-center h-full bg-[var(--rf-card)] text-white">
         <p className="text-red-400">Error loading map. Please check your Google Maps API key.</p>
       </div>
     );
@@ -122,9 +122,9 @@ export default function FarmerMapView({
 
   if (!isLoaded) {
     return (
-      <div className="flex items-center justify-center h-full bg-[#1c2e20] text-white">
+      <div className="flex items-center justify-center h-full bg-[var(--rf-card)] text-white">
         <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-[#13ec37] mx-auto mb-4"></div>
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-[var(--rf-sap)] mx-auto mb-4"></div>
           <p>Loading map...</p>
         </div>
       </div>
@@ -164,11 +164,12 @@ export default function FarmerMapView({
               lng: generatorLocation.longitude,
             }}
             icon={{
+              // Your-location marker — rust accent (matches FarmerListingMap).
               path: google.maps.SymbolPath.CIRCLE,
               scale: 8,
-              fillColor: '#FF0000',
+              fillColor: '#d9572a', // --rf-rust
               fillOpacity: 1,
-              strokeColor: '#FFFFFF',
+              strokeColor: '#f1ead8', // --rf-bone
               strokeWeight: 2,
             }}
             title="Your Location"
@@ -192,9 +193,10 @@ export default function FarmerMapView({
                   }}
                   radius={farmer.searchRadiusKm * 1000} // Convert km to meters
                   options={{
-                    fillColor: '#13ec37',
+                    // Maps API doesn't parse CSS vars — keep literals in sync with --rf-sap / --rf-amber.
+                    fillColor: '#c8ff4d',   // --rf-sap
                     fillOpacity: 0.15,
-                    strokeColor: '#13ec37',
+                    strokeColor: '#c8ff4d', // --rf-sap
                     strokeOpacity: 0.5,
                     strokeWeight: 2,
                   }}
@@ -209,9 +211,10 @@ export default function FarmerMapView({
                 }}
                 onClick={() => handleMarkerClick(farmer)}
                 icon={{
+                  // Maps API needs literal hex. Selected farmer = sap, default = amber.
                   path: google.maps.SymbolPath.CIRCLE,
                   scale: isSelected ? 10 : 8,
-                  fillColor: isSelected ? '#13ec37' : '#4CAF50',
+                  fillColor: isSelected ? '#c8ff4d' : '#e9c46a', // --rf-sap : --rf-amber
                   fillOpacity: 1,
                   strokeColor: '#FFFFFF',
                   strokeWeight: isSelected ? 3 : 2,

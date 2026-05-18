@@ -18,17 +18,13 @@ export default function RoleOnboardingPage() {
         router.push('/login?redirect=/onboarding/role');
         return;
       }
-
       const profile = await getUserProfile(user.uid);
-      // If role already chosen, go to location setup (or home routing later)
       if (profile?.role) {
         router.push('/onboarding/location');
         return;
       }
-
       setLoading(false);
     });
-
     return () => unsub();
   }, [router]);
 
@@ -37,17 +33,12 @@ export default function RoleOnboardingPage() {
     setSaving(role);
     try {
       const user = await new Promise<Parameters<Parameters<typeof onAuthStateChange>[0]>[0]>((resolve) => {
-        const unsub = onAuthStateChange((u) => {
-          unsub();
-          resolve(u);
-        });
+        const unsub = onAuthStateChange((u) => { unsub(); resolve(u); });
       });
-
       if (!user) {
         router.push('/login?redirect=/onboarding/role');
         return;
       }
-
       await setUserRoleOnce(user.uid, role);
       toast.success(`Role set: ${role === 'generator' ? 'Restaurant / Generator' : 'Farmer'}`);
       router.push('/onboarding/location');
@@ -61,82 +52,92 @@ export default function RoleOnboardingPage() {
 
   if (loading) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-[#102213]">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-[#13ec37] mx-auto mb-4"></div>
-          <p className="text-white font-semibold">Loading...</p>
-        </div>
+      <div className="min-h-screen flex items-center justify-center" style={{ background: 'var(--rf-forest)' }}>
+        <p className="font-instrument italic text-2xl tracking-tight" style={{ color: 'var(--rf-bone)' }}>
+          looking up your seat at the table<span className="animate-pulse">…</span>
+        </p>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-[#102213] flex items-center justify-center px-4 py-10">
-      <div className="max-w-2xl w-full bg-[#1c2e20] rounded-xl shadow-2xl border border-[#234829] p-8">
-        <div className="flex items-center gap-3 mb-8">
-          <div className="size-10 text-[#13ec37]">
-            <svg fill="none" viewBox="0 0 48 48" xmlns="http://www.w3.org/2000/svg">
-              <path d="M42.4379 44C42.4379 44 36.0744 33.9038 41.1692 24C46.8624 12.9336 42.2078 4 42.2078 4L7.01134 4C7.01134 4 11.6577 12.932 5.96912 23.9969C0.876273 33.9029 7.27094 44 7.27094 44L42.4379 44Z" fill="currentColor"></path>
-            </svg>
+    <div className="min-h-screen relative overflow-hidden flex items-center justify-center px-6 py-16"
+         style={{ background: 'var(--rf-forest)', color: 'var(--rf-bone)' }}>
+
+      {/* Atmospheric layers */}
+      <div className="pointer-events-none absolute inset-0 rf-dotgrid opacity-60" />
+      <div
+        className="pointer-events-none absolute inset-0"
+        style={{
+          background:
+            'radial-gradient(800px 600px at 15% 10%, rgba(200,255,77,.09), transparent 60%), radial-gradient(700px 500px at 90% 100%, rgba(217,87,42,.10), transparent 60%)',
+        }}
+      />
+      <div className="pointer-events-none absolute inset-0 rf-vignette" />
+
+      <div className="relative z-10 max-w-4xl w-full">
+        {/* Issue header */}
+        <div className="flex items-center justify-between mb-10 rf-fade-up">
+          <div className="flex items-center gap-3 font-mono-jb text-[10px] uppercase tracking-[0.3em] opacity-70">
+            <span className="size-2 rounded-full animate-pulse" style={{ background: 'var(--rf-sap)' }} />
+            Chapter 01 · Choose your bench
           </div>
-          <div>
-            <h1 className="text-2xl font-black text-white tracking-tight">
-              Choose your role
-            </h1>
-            <p className="text-[#92c99b] text-sm mt-1">
-              You can only have <span className="font-semibold text-white">one role</span> in this prototype.
-            </p>
-          </div>
+          <span className="font-mono-jb text-[10px] uppercase tracking-[0.3em] opacity-60 hidden md:block">
+            pp. 01 — A field guide to nothing wasted
+          </span>
         </div>
 
-        <div className="grid md:grid-cols-2 gap-4">
-          <button
+        {/* Headline */}
+        <h1 className="rf-headline text-[clamp(2.5rem,7vw,5.5rem)] mb-6 rf-fade-up"
+            style={{ animationDelay: '.1s' }}>
+          Which side of the
+          <br />
+          <span className="italic">table</span> are you on?
+        </h1>
+
+        <p className="font-instrument italic text-xl md:text-2xl max-w-2xl mb-14 rf-fade-up"
+           style={{ color: 'rgba(241,234,216,.7)', animationDelay: '.2s' }}>
+          One role, one practice. You can be the kitchen finishing service, or
+          the farmer beginning the morning&apos;s feed — not both, not yet.
+        </p>
+
+        {/* Choice cards */}
+        <div className="grid md:grid-cols-2 gap-6">
+          <RoleCard
+            num="01"
+            eyebrow="The kitchen"
+            title="Restaurant"
+            italic="Generator"
+            body="Post the day's surplus with a photo, price, and a pickup window. Watch it find a field."
+            icon="restaurant"
             onClick={() => chooseRole('generator')}
+            saving={saving === 'generator'}
             disabled={!!saving}
-            className="text-left p-6 rounded-xl border border-[#234829] hover:border-[#13ec37]/50 hover:bg-[#234829]/50 bg-[#112214] transition-all disabled:opacity-60 group"
-          >
-            <div className="flex items-center gap-3 mb-2">
-              <span className="material-symbols-outlined text-[#13ec37] text-2xl">restaurant</span>
-              <p className="text-sm font-semibold text-[#13ec37] uppercase tracking-wide">Restaurant / Food Generator</p>
-            </div>
-            <p className="text-xl font-black text-white mt-2">Sell surplus waste feed</p>
-            <p className="text-sm text-[#92c99b] mt-3">
-              Post listings with photos, price, and pickup windows.
-            </p>
-            {saving === 'generator' && (
-              <div className="mt-4 flex items-center gap-2 text-[#92c99b]">
-                <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-[#13ec37]"></div>
-                <p className="text-sm">Saving…</p>
-              </div>
-            )}
-          </button>
-
-          <button
+            delay={0.3}
+          />
+          <RoleCard
+            num="02"
+            eyebrow="The field"
+            title="Farmer"
+            italic="Receiver"
+            body="See what's available within your orbit. Claim a parcel, schedule the pickup, close the loop."
+            icon="agriculture"
             onClick={() => chooseRole('farmer')}
+            saving={saving === 'farmer'}
             disabled={!!saving}
-            className="text-left p-6 rounded-xl border border-[#234829] hover:border-[#13ec37]/50 hover:bg-[#234829]/50 bg-[#112214] transition-all disabled:opacity-60 group"
-          >
-            <div className="flex items-center gap-3 mb-2">
-              <span className="material-symbols-outlined text-[#13ec37] text-2xl">agriculture</span>
-              <p className="text-sm font-semibold text-[#13ec37] uppercase tracking-wide">Farmer / Waste Receiver</p>
-            </div>
-            <p className="text-xl font-black text-white mt-2">Buy nearby waste at low price</p>
-            <p className="text-sm text-[#92c99b] mt-3">
-              Browse listings within your chosen radius and claim first-come-first-serve.
-            </p>
-            {saving === 'farmer' && (
-              <div className="mt-4 flex items-center gap-2 text-[#92c99b]">
-                <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-[#13ec37]"></div>
-                <p className="text-sm">Saving…</p>
-              </div>
-            )}
-          </button>
+            delay={0.4}
+          />
         </div>
 
-        <div className="mt-8 p-4 bg-[#234829]/30 rounded-lg border border-[#234829]">
-          <p className="text-xs text-[#92c99b]">
-            <span className="material-symbols-outlined text-sm text-[#13ec37] align-middle mr-1">info</span>
-            Tip: you can change role later only by deleting the user document or using an admin tool (not included in prototype).
+        {/* Footnote */}
+        <div className="mt-12 grid grid-cols-12 gap-6 items-start rf-fade-up" style={{ animationDelay: '.55s' }}>
+          <div className="col-span-12 md:col-span-2 font-mono-jb text-[10px] uppercase tracking-[0.3em] opacity-50">
+            §  Footnote
+          </div>
+          <p className="col-span-12 md:col-span-10 font-instrument italic text-base leading-snug"
+             style={{ color: 'rgba(241,234,216,.6)' }}>
+            For this edition the role is fixed once set. Future printings will allow a
+            quiet trade between benches — a kitchen turned grower, a farmer turned host.
           </p>
         </div>
       </div>
@@ -144,4 +145,61 @@ export default function RoleOnboardingPage() {
   );
 }
 
+function RoleCard({
+  num, eyebrow, title, italic, body, icon, onClick, saving, disabled, delay,
+}: {
+  num: string; eyebrow: string; title: string; italic: string; body: string; icon: string;
+  onClick: () => void; saving: boolean; disabled: boolean; delay: number;
+}) {
+  return (
+    <button
+      onClick={onClick}
+      disabled={disabled}
+      className="group relative text-left p-8 rounded-2xl border transition-all hover:-translate-y-1 disabled:opacity-50 disabled:hover:translate-y-0 rf-fade-up"
+      style={{
+        borderColor: 'rgba(241,234,216,.16)',
+        background: 'rgba(241,234,216,.025)',
+        animationDelay: `${delay}s`,
+      }}
+    >
+      <div className="flex items-start justify-between mb-8">
+        <span className="font-fraunces fraunces-wonk italic text-7xl font-light leading-none"
+              style={{ color: 'var(--rf-sap)' }}>
+          {num}
+        </span>
+        <span className="material-symbols-outlined opacity-60 group-hover:opacity-100 transition-opacity"
+              style={{ color: 'var(--rf-bone)', fontSize: 32 }}>
+          {icon}
+        </span>
+      </div>
 
+      <div className="rf-eyebrow mb-3">{eyebrow}</div>
+      <h3 className="font-fraunces fraunces-wonk text-4xl md:text-5xl font-light leading-[0.95] tracking-[-0.03em] mb-2"
+          style={{ color: 'var(--rf-bone)' }}>
+        {title} <span className="font-instrument italic font-normal" style={{ color: 'var(--rf-sap)' }}>{italic}</span>
+      </h3>
+      <p className="font-fraunces text-base leading-relaxed mt-4" style={{ color: 'rgba(241,234,216,.72)' }}>
+        {body}
+      </p>
+
+      <div className="mt-8 flex items-center justify-between">
+        <span className="font-mono-jb text-[11px] uppercase tracking-[0.3em] opacity-70 group-hover:opacity-100 transition-opacity">
+          {saving ? 'Setting your seat…' : 'Choose this bench →'}
+        </span>
+        {!saving ? (
+          <span className="flex items-center justify-center size-10 rounded-full transition-transform group-hover:rotate-45"
+                style={{ background: 'var(--rf-sap)', color: 'var(--rf-forest)' }}>
+            <svg viewBox="0 0 24 24" className="size-4" fill="none" stroke="currentColor" strokeWidth="2">
+              <path d="M7 17L17 7M9 7h8v8" strokeLinecap="round" strokeLinejoin="round" />
+            </svg>
+          </span>
+        ) : (
+          <span className="size-10 rounded-full flex items-center justify-center"
+                style={{ background: 'var(--rf-sap)' }}>
+            <span className="size-4 border-2 border-[color:var(--rf-forest)] border-t-transparent rounded-full animate-spin" />
+          </span>
+        )}
+      </div>
+    </button>
+  );
+}

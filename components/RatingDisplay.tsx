@@ -15,9 +15,9 @@ export default function RatingDisplay({
 }: RatingDisplayProps) {
   if (!rating || rating === 0 || isNaN(Number(rating))) {
     return (
-      <div className="flex items-center gap-1 text-gray-400 dark:text-[#5d8265]">
-        <span className="text-xs">No ratings yet</span>
-      </div>
+      <span className="font-mono-jb text-[9px] uppercase tracking-[0.22em] opacity-50" style={{ color: 'var(--rf-bone)' }}>
+        Unrated
+      </span>
     );
   }
 
@@ -52,24 +52,31 @@ export default function RatingDisplay({
           const isPartialStar = fillRatio > 0 && fillRatio < 1;
           return (
             <span key={`star-${i}`} className={`relative inline-block leading-none -mr-[2px] ${starSize[size]}`}>
-              <span className={`material-symbols-outlined inline-block origin-left transform-gpu ${starScale[size]} text-gray-400 dark:text-[#48664e]`}>star</span>
+              <span className={`material-symbols-outlined inline-block origin-left transform-gpu ${starScale[size]}`} style={{ color: 'rgba(241,234,216,0.2)' }}>star</span>
               <span
                 className="absolute inset-y-0 left-0 overflow-hidden whitespace-nowrap"
                 style={{ width: `${fillRatio * 100}%` }}
               >
-                <span className={`material-symbols-outlined inline-block origin-left transform-gpu ${starScale[size]} ${isPartialStar ? 'text-amber-400' : 'text-yellow-400'} fill-current`}>star</span>
+                <span
+                  className={`material-symbols-outlined inline-block origin-left transform-gpu ${starScale[size]}`}
+                  style={{
+                    color: 'var(--rf-sap)',
+                    fontVariationSettings: '"FILL" 1',
+                    opacity: isPartialStar ? 0.85 : 1,
+                  }}
+                >star</span>
               </span>
             </span>
           );
         })}
       </div>
-      
+
       <div className="flex items-center gap-1.5">
-        <span className={`font-semibold text-slate-900 dark:text-white ${sizeClasses[size]}`}>
+        <span className={`font-fraunces fraunces-wonk font-light ${sizeClasses[size]}`} style={{ color: 'var(--rf-bone)' }}>
           {formattedRating}
         </span>
         {showCount && totalRatings !== undefined && totalRatings > 0 && (
-          <span className={`text-gray-500 dark:text-[#5d8265] ${sizeClasses.sm}`}>
+          <span className={`font-mono-jb text-[10px] uppercase tracking-[0.18em] opacity-55`} style={{ color: 'var(--rf-bone)' }}>
             ({totalRatings} {totalRatings === 1 ? 'rating' : 'ratings'})
           </span>
         )}

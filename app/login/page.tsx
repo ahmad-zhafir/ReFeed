@@ -1,11 +1,11 @@
 'use client';
 
-import { useState, useEffect, Suspense } from 'react';
+import { useState, Suspense } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
-import { signUpWithEmail, signInWithEmail, getFirestoreDb, onAuthStateChange } from '@/lib/firebase';
-import { collection, doc, setDoc, getDoc } from 'firebase/firestore';
-import { UserProfile, MarketplaceRole } from '@/lib/types';
-import { getUserProfile, setUserRoleOnce } from '@/lib/userProfile';
+import { signUpWithEmail, signInWithEmail, getFirestoreDb } from '@/lib/firebase';
+import { doc, setDoc } from 'firebase/firestore';
+import { MarketplaceRole } from '@/lib/types';
+import { getUserProfile } from '@/lib/userProfile';
 import Link from 'next/link';
 
 function LoginForm() {
@@ -29,344 +29,276 @@ function LoginForm() {
 
     try {
       if (isSignUp) {
-        // Sign up
-        if (!name || !contact) {
-          setError('Name and contact number are required');
-          setLoading(false);
-          return;
-        }
-
-        if (!selectedRole) {
-          setError('Please select your role (Generator or Farmer)');
-          setLoading(false);
-          return;
-        }
+        if (!name || !contact) { setError('Name and contact number are required'); setLoading(false); return; }
+        if (!selectedRole) { setError('Please select your role (Generator or Farmer)'); setLoading(false); return; }
 
         const userCredential = await signUpWithEmail(email, password);
         const user = userCredential.user;
 
-        // Create user profile with role
         const db = getFirestoreDb();
         const userProfile: any = {
-          id: user.uid,
-          email: user.email || email,
-          name,
-          contact,
-          role: selectedRole,
-          created_at: new Date(),
+          id: user.uid, email: user.email || email,
+          name, contact, role: selectedRole, created_at: new Date(),
         };
-        
-        // Remove any undefined values
-        Object.keys(userProfile).forEach(key => {
-          if (userProfile[key] === undefined) {
-            delete userProfile[key];
-          }
-        });
-
+        Object.keys(userProfile).forEach((k) => userProfile[k] === undefined && delete userProfile[k]);
         await setDoc(doc(db, 'users', user.uid), userProfile);
-
-        // Redirect to location onboarding (role already set)
         router.push('/onboarding/location');
       } else {
-        // Sign in
         const userCredential = await signInWithEmail(email, password);
-        
-        // Check if user has role set, redirect accordingly
         const profile = await getUserProfile(userCredential.user.uid);
-        if (!profile || !profile.role) {
-          router.push('/onboarding/role');
-        } else {
-          const role = profile.role as MarketplaceRole;
-          if (role === 'generator') {
-            router.push('/generator');
-          } else if (role === 'farmer') {
-            router.push('/farmer');
-          } else {
-            router.push(redirectTo);
-          }
-        }
+        if (!profile || !profile.role) router.push('/onboarding/role');
+        else if (profile.role === 'generator') router.push('/generator');
+        else if (profile.role === 'farmer') router.push('/farmer');
+        else router.push(redirectTo);
       }
     } catch (error: any) {
-      console.error('Auth error:', error);
-      let errorMessage = 'An error occurred. Please try again.';
-      
-      if (error.code === 'auth/email-already-in-use') {
-        errorMessage = 'This email is already registered. Please sign in instead.';
-      } else if (error.code === 'auth/weak-password') {
-        errorMessage = 'Password should be at least 6 characters.';
-      } else if (error.code === 'auth/invalid-email') {
-        errorMessage = 'Invalid email address.';
-      } else if (error.code === 'auth/user-not-found') {
-        errorMessage = 'No account found with this email. Please sign up first.';
-      } else if (error.code === 'auth/wrong-password') {
-        errorMessage = 'Incorrect password.';
-      } else if (error.message) {
-        errorMessage = error.message;
-      }
-      
-      setError(errorMessage);
+      let m = 'An error occurred. Please try again.';
+      if (error.code === 'auth/email-already-in-use') m = 'This email is already registered. Please sign in instead.';
+      else if (error.code === 'auth/weak-password') m = 'Password should be at least 6 characters.';
+      else if (error.code === 'auth/invalid-email') m = 'Invalid email address.';
+      else if (error.code === 'auth/user-not-found') m = 'No account found with this email. Please sign up first.';
+      else if (error.code === 'auth/wrong-password') m = 'Incorrect password.';
+      else if (error.message) m = error.message;
+      setError(m);
     } finally {
       setLoading(false);
     }
   };
 
   return (
-    <div className="bg-[#f6f8f6] dark:bg-[#102213] text-slate-900 dark:text-white font-display antialiased overflow-x-hidden flex flex-col min-h-screen">
-      {/* Header */}
-      <header className="absolute top-0 z-50 w-full border-b border-white/10">
-        <div className="w-full px-6 md:px-10 py-4 flex items-center justify-between">
-          <Link href="/" className="flex items-center gap-4 text-white cursor-pointer">
-            <div className="size-8 text-[#13ec37]">
-              <svg fill="none" viewBox="0 0 48 48" xmlns="http://www.w3.org/2000/svg">
-                <path d="M42.4379 44C42.4379 44 36.0744 33.9038 41.1692 24C46.8624 12.9336 42.2078 4 42.2078 4L7.01134 4C7.01134 4 11.6577 12.932 5.96912 23.9969C0.876273 33.9029 7.27094 44 7.27094 44L42.4379 44Z" fill="currentColor"></path>
+    <div className="font-fraunces antialiased min-h-screen flex relative overflow-hidden"
+         style={{ background: 'var(--rf-forest)', color: 'var(--rf-bone)' }}>
+
+      {/* Atmospheric overlays */}
+      <div className="pointer-events-none absolute inset-0 rf-dotgrid opacity-50" />
+      <div className="pointer-events-none absolute inset-0"
+        style={{
+          background:
+            'radial-gradient(900px 600px at 10% 90%, rgba(200,255,77,.10), transparent 60%), radial-gradient(700px 500px at 100% 0%, rgba(217,87,42,.10), transparent 60%)',
+        }} />
+      <div className="pointer-events-none absolute inset-0 rf-vignette" />
+
+      {/* —— LEFT: Editorial poster panel —— */}
+      <aside className="hidden lg:flex flex-col justify-between w-[44%] relative px-12 py-10 border-r"
+             style={{ borderColor: 'rgba(241,234,216,.10)' }}>
+        <Link href="/" className="flex items-center gap-3 group">
+          <div className="relative size-10">
+            <div className="absolute inset-0 rounded-full border border-dashed" style={{ borderColor: 'var(--rf-sap)' }} />
+            <div className="absolute inset-1 rounded-full flex items-center justify-center"
+                 style={{ background: 'var(--rf-sap)', color: 'var(--rf-forest)' }}>
+              <svg viewBox="0 0 48 48" className="size-5" fill="currentColor">
+                <path d="M42.4 44s-6.4-10.1-1.3-20C46.9 12.9 42.2 4 42.2 4H7s4.7 8.9-1 20C.9 33.9 7.3 44 7.3 44h35.1z" />
               </svg>
             </div>
-            <h2 className="text-xl font-bold leading-tight tracking-[-0.015em]">ReFeed</h2>
+          </div>
+          <div className="flex flex-col leading-none">
+            <h2 className="font-fraunces fraunces-wonk text-2xl font-black tracking-[-0.03em]">
+              Re<span className="italic font-light" style={{ color: 'var(--rf-sap)' }}>Feed</span>
+            </h2>
+            <span className="font-mono-jb text-[9px] uppercase tracking-[0.32em] mt-1 opacity-60">
+              Circular · Local · Living
+            </span>
+          </div>
+        </Link>
+
+        <div>
+          <div className="rf-eyebrow mb-6 flex items-center gap-3">
+            <span className="size-1.5 rounded-full" style={{ background: 'var(--rf-sap)' }} />
+            Issue №001 · The Returning
+          </div>
+          <h1 className="rf-headline text-[clamp(3rem,5vw,5.5rem)] mb-8">
+            Welcome
+            <br />
+            <span className="italic">back to the</span>
+            <br />
+            loop.
+          </h1>
+          <p className="font-instrument italic text-2xl leading-snug max-w-md"
+             style={{ color: 'rgba(241,234,216,.7)' }}>
+            A quiet little exchange between yesterday&apos;s kitchens and tomorrow&apos;s fields.
+          </p>
+
+          <div className="mt-12 relative size-32">
+            <svg className="rf-spin-slow absolute inset-0" viewBox="0 0 200 200">
+              <defs>
+                <path id="seal-login" d="M 100, 100 m -78, 0 a 78,78 0 1,1 156,0 a 78,78 0 1,1 -156,0" />
+              </defs>
+              <text className="font-mono-jb" fontSize="11" letterSpacing="6" fill="var(--rf-bone)" style={{ opacity: 0.7 }}>
+                <textPath href="#seal-login">
+                  FROM · KITCHEN · TO · FIELD · ↻ · FROM · FIELD · TO · TABLE · ↻ ·
+                </textPath>
+              </text>
+            </svg>
+            <div className="absolute inset-6 rounded-full flex items-center justify-center border border-dashed"
+                 style={{ borderColor: 'rgba(200,255,77,.3)' }}>
+              <span className="font-fraunces fraunces-wonk italic text-2xl" style={{ color: 'var(--rf-sap)' }}>est.</span>
+            </div>
+          </div>
+        </div>
+
+        <div className="flex justify-between font-mono-jb text-[10px] uppercase tracking-[0.3em] opacity-50">
+          <span>An almanac of returns</span>
+          <span>© {new Date().getFullYear()}</span>
+        </div>
+      </aside>
+
+      {/* —— RIGHT: Form column —— */}
+      <main className="relative z-10 flex-1 flex items-start lg:items-center justify-center px-6 py-16 lg:py-10 overflow-y-auto">
+        <div className="w-full max-w-md">
+          <Link href="/" className="lg:hidden flex items-center gap-3 mb-10">
+            <div className="size-9 rounded-full flex items-center justify-center"
+                 style={{ background: 'var(--rf-sap)', color: 'var(--rf-forest)' }}>
+              <svg viewBox="0 0 48 48" className="size-4" fill="currentColor">
+                <path d="M42.4 44s-6.4-10.1-1.3-20C46.9 12.9 42.2 4 42.2 4H7s4.7 8.9-1 20C.9 33.9 7.3 44 7.3 44h35.1z" />
+              </svg>
+            </div>
+            <h2 className="font-fraunces fraunces-wonk text-2xl font-black tracking-[-0.03em]">
+              Re<span className="italic font-light" style={{ color: 'var(--rf-sap)' }}>Feed</span>
+            </h2>
           </Link>
 
-          <nav className="hidden md:flex flex-1 justify-end gap-8 items-center">
-            <div className="flex items-center gap-8">
-              <Link href="#about" className="text-white/90 hover:text-[#13ec37] transition-colors text-sm font-medium leading-normal">
-                About
-              </Link>
-              <Link href="#impact" className="text-white/90 hover:text-[#13ec37] transition-colors text-sm font-medium leading-normal">
-                Impact
-              </Link>
-            </div>
-          </nav>
-
-          <div className="md:hidden text-white">
-            <span className="material-symbols-outlined">menu</span>
+          <div className="inline-flex p-1 rounded-full mb-10 border"
+               style={{ borderColor: 'rgba(241,234,216,.12)', background: 'rgba(241,234,216,.03)' }}>
+            <button
+              type="button"
+              onClick={() => { setIsSignUp(false); setError(''); }}
+              className="px-5 py-2 rounded-full font-mono-jb text-[10px] uppercase tracking-[0.28em] transition-all"
+              style={!isSignUp
+                ? { background: 'var(--rf-sap)', color: 'var(--rf-forest)' }
+                : { color: 'var(--rf-bone)', opacity: 0.55 }}
+            >
+              Sign In
+            </button>
+            <button
+              type="button"
+              onClick={() => { setIsSignUp(true); setError(''); setSelectedRole(null); }}
+              className="px-5 py-2 rounded-full font-mono-jb text-[10px] uppercase tracking-[0.28em] transition-all"
+              style={isSignUp
+                ? { background: 'var(--rf-sap)', color: 'var(--rf-forest)' }
+                : { color: 'var(--rf-bone)', opacity: 0.55 }}
+            >
+              New Here
+            </button>
           </div>
-        </div>
-      </header>
 
-      {/* Main Content */}
-      <main className="flex-grow flex flex-col relative items-center justify-center p-4 pt-24 pb-10">
-        {/* Background */}
-        <div className="absolute inset-0 z-0 overflow-hidden">
-          <div 
-            className="absolute inset-0 bg-cover bg-center transform scale-105" 
-            style={{
-              backgroundImage: 'url("https://lh3.googleusercontent.com/aida-public/AB6AXuC-UfDZUpEAXAScgAFdJ6Ivt_P8n3HDc1Fibv9mqgnRJC010Fpz4a7_ZoZnCKe50bjaGb4nKIs9Xmpa7L0Q3xlZkPPlK7qiG_63z6OTag0dRGrzXea-FkqFFkE7-x0g60wu5rPhigtDIRhk1QEuSF128Ns2ahjAhuJEvlHXtArd4IqGknv39Kn0dTe_UOfNks0cGA4XMA1Fe4u-sT7z-dFV5hpaJ-2azacOO3MU2jeB9W7u_fTwxVecXUjZXUQ80cc1GBqcBvaimdY")',
-              filter: 'blur(8px)'
-            }}
-          ></div>
-          <div className="absolute inset-0 bg-[#102213]/85 mix-blend-multiply"></div>
-          <div className="absolute inset-0 bg-black/30"></div>
-        </div>
+          <div className="mb-2 rf-eyebrow">
+            {isSignUp ? '› Begin your apprenticeship' : '› Return to the loop'}
+          </div>
+          <h1 className="rf-headline text-5xl md:text-6xl mb-3">
+            {isSignUp ? (
+              <>Pull up a <span className="italic">chair.</span></>
+            ) : (
+              <>Welcome <span className="italic">back.</span></>
+            )}
+          </h1>
+          <p className="font-instrument italic text-lg mb-10" style={{ color: 'rgba(241,234,216,.65)' }}>
+            {isSignUp
+              ? 'A few notes about you, and we\'ll set your seat.'
+              : 'The kitchens are warm. Let\'s begin.'}
+          </p>
 
-        {/* Form Card */}
-        <div className="relative z-10 w-full max-w-[580px] flex flex-col gap-6">
-          <div className="bg-white dark:bg-[#19331e] rounded-xl shadow-2xl dark:shadow-[0_20px_50px_rgba(0,0,0,0.5)] border border-gray-200 dark:border-white/10 overflow-hidden">
-            {/* Tabs */}
-            <div className="flex border-b border-gray-200 dark:border-white/10">
-              <button
-                onClick={() => {
-                  setIsSignUp(false);
-                  setError('');
-                }}
-                className={`flex-1 py-4 text-sm font-bold text-center transition-colors ${
-                  !isSignUp
-                    ? 'text-[#13ec37] border-b-2 border-[#13ec37] bg-[#13ec37]/5'
-                    : 'text-slate-400 hover:text-slate-600 dark:text-gray-400 dark:hover:text-white'
-                }`}
-              >
-                Sign In
-              </button>
-              <button
-                onClick={() => {
-                  setIsSignUp(true);
-                  setError('');
-                  setSelectedRole(null);
-                }}
-                className={`flex-1 py-4 text-sm font-bold text-center transition-colors ${
-                  isSignUp
-                    ? 'text-[#13ec37] border-b-2 border-[#13ec37] bg-[#13ec37]/5'
-                    : 'text-slate-400 hover:text-slate-600 dark:text-gray-400 dark:hover:text-white'
-                }`}
-              >
-                Sign Up
-              </button>
+          {error && (
+            <div className="mb-6 px-5 py-4 rounded-xl border font-mono-jb text-[11px] uppercase tracking-[0.18em]"
+                 style={{ background: 'rgba(217,87,42,.08)', borderColor: 'rgba(217,87,42,.35)', color: 'var(--rf-rust)' }}>
+              ⚠  {error}
             </div>
+          )}
 
-            {/* Form Content */}
-            <div className="p-6 md:p-10 flex flex-col gap-8">
-              {/* Welcome Message */}
-              <div className="text-center">
-                <h2 className="text-2xl font-bold text-slate-900 dark:text-white">
-                  {isSignUp ? 'Create Account' : 'Welcome Back'}
-                </h2>
-                <p className="text-slate-500 dark:text-[#92c99b] mt-1">
-                  {isSignUp ? 'Start your journey towards zero waste.' : 'Continue your journey towards zero waste.'}
-                </p>
-              </div>
+          <form onSubmit={handleSubmit} className="space-y-5">
+            {isSignUp && (
+              <>
+                <Field label="Full name" hint="01">
+                  <input type="text" value={name} onChange={(e) => setName(e.target.value)} required
+                    className="rf-input w-full h-12 px-4" placeholder="Jane Harvest" />
+                </Field>
 
-              {error && (
-                <div className="bg-red-500/10 border border-red-500/20 text-red-400 px-4 py-3 rounded-lg text-sm">
-                  {error}
+                <Field label="Contact number" hint="02">
+                  <input type="tel" value={contact} onChange={(e) => setContact(e.target.value)} required
+                    className="rf-input w-full h-12 px-4" placeholder="+1 (000) 000 0000" />
+                </Field>
+
+                <div>
+                  <div className="flex items-end justify-between mb-3">
+                    <label className="font-fraunces text-base font-medium" style={{ color: 'var(--rf-bone)' }}>
+                      I am a…
+                    </label>
+                    <span className="font-mono-jb text-[10px] uppercase tracking-[0.3em] opacity-50">03</span>
+                  </div>
+                  <div className="grid grid-cols-2 gap-3">
+                    <RolePill icon="restaurant" label="Restaurant" sub="surplus →"
+                      selected={selectedRole === 'generator'} onClick={() => setSelectedRole('generator')} />
+                    <RolePill icon="agriculture" label="Farmer" sub="← receives"
+                      selected={selectedRole === 'farmer'} onClick={() => setSelectedRole('farmer')} />
+                  </div>
                 </div>
+              </>
+            )}
+
+            <Field label="Email address" hint={isSignUp ? '04' : '01'}>
+              <input type="email" value={email} onChange={(e) => setEmail(e.target.value)} required
+                className="rf-input w-full h-12 px-4" placeholder="you@kitchen.farm" />
+            </Field>
+
+            <Field
+              label="Password"
+              hint={isSignUp ? '05' : '02'}
+              right={!isSignUp && (
+                <a href="#" className="font-mono-jb text-[10px] uppercase tracking-[0.25em] hover:underline"
+                   style={{ color: 'var(--rf-sap)' }}>
+                  Forgot it?
+                </a>
               )}
+            >
+              <div className="relative">
+                <input type={showPassword ? 'text' : 'password'} value={password}
+                  onChange={(e) => setPassword(e.target.value)} required minLength={6}
+                  className="rf-input w-full h-12 px-4 pr-12" placeholder="••••••••" />
+                <button type="button" onClick={() => setShowPassword(!showPassword)}
+                  className="absolute inset-y-0 right-0 px-4 flex items-center opacity-60 hover:opacity-100 transition-opacity"
+                  aria-label={showPassword ? 'Hide password' : 'Show password'}>
+                  <span className="material-symbols-outlined text-xl">
+                    {showPassword ? 'visibility_off' : 'visibility'}
+                  </span>
+                </button>
+              </div>
+            </Field>
 
-              <form onSubmit={handleSubmit} className="flex flex-col gap-5">
-                {isSignUp && (
-                  <>
-                    <label className="block">
-                      <span className="text-sm font-medium text-slate-700 dark:text-white">Full Name</span>
-                      <input
-                        type="text"
-                        value={name}
-                        onChange={(e) => setName(e.target.value)}
-                        required={isSignUp}
-                        className="mt-1 block w-full rounded-lg border-gray-300 dark:border-none bg-white dark:bg-[#234829] text-slate-900 dark:text-white placeholder:text-slate-400 dark:placeholder:text-[#92c99b] focus:border-[#13ec37] focus:ring-[#13ec37] focus:ring-1 sm:text-sm h-12 px-4 shadow-sm"
-                        placeholder="John Doe"
-                      />
-                    </label>
-
-                    <label className="block">
-                      <span className="text-sm font-medium text-slate-700 dark:text-white">Contact Number</span>
-                      <input
-                        type="tel"
-                        value={contact}
-                        onChange={(e) => setContact(e.target.value)}
-                        required={isSignUp}
-                        className="mt-1 block w-full rounded-lg border-gray-300 dark:border-none bg-white dark:bg-[#234829] text-slate-900 dark:text-white placeholder:text-slate-400 dark:placeholder:text-[#92c99b] focus:border-[#13ec37] focus:ring-[#13ec37] focus:ring-1 sm:text-sm h-12 px-4 shadow-sm"
-                        placeholder="+1234567890"
-                      />
-                    </label>
-
-                    <div>
-                      <span className="text-sm font-medium text-slate-700 dark:text-white block mb-2">I am a... *</span>
-                      <div className="grid grid-cols-2 gap-3">
-                        <button
-                          type="button"
-                          onClick={() => setSelectedRole('generator')}
-                          className={`p-4 rounded-lg border-2 transition-all text-left flex items-center gap-3 ${
-                            selectedRole === 'generator'
-                              ? 'border-[#13ec37] bg-[#13ec37]/10 dark:bg-[#13ec37]/20'
-                              : 'border-gray-300 dark:border-white/10 hover:border-[#13ec37]/50'
-                          }`}
-                        >
-                          <span className={`text-2xl flex-shrink-0 flex items-center ${
-                            selectedRole === 'generator' ? 'text-[#13ec37]' : 'text-slate-400 dark:text-gray-500'
-                          }`}>
-                            <span className="material-symbols-outlined">restaurant</span>
-                          </span>
-                          <div>
-                            <p className="font-semibold text-slate-900 dark:text-white">Restaurant</p>
-                            <p className="text-xs text-slate-500 dark:text-[#92c99b] mt-1">Sell waste feed</p>
-                          </div>
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => setSelectedRole('farmer')}
-                          className={`p-4 rounded-lg border-2 transition-all text-left flex items-center gap-3 ${
-                            selectedRole === 'farmer'
-                              ? 'border-[#13ec37] bg-[#13ec37]/10 dark:bg-[#13ec37]/20'
-                              : 'border-gray-300 dark:border-white/10 hover:border-[#13ec37]/50'
-                          }`}
-                        >
-                          <span className={`text-2xl flex-shrink-0 flex items-center ${
-                            selectedRole === 'farmer' ? 'text-[#13ec37]' : 'text-slate-400 dark:text-gray-500'
-                          }`}>
-                            <span className="material-symbols-outlined">agriculture</span>
-                          </span>
-                          <div>
-                            <p className="font-semibold text-slate-900 dark:text-white">Farmer</p>
-                            <p className="text-xs text-slate-500 dark:text-[#92c99b] mt-1">Buy waste feed</p>
-                          </div>
-                        </button>
-                      </div>
-                    </div>
-                  </>
+            <button type="submit" disabled={loading}
+              className="group mt-8 w-full inline-flex items-center justify-between pl-7 pr-2 h-14 rounded-full font-mono-jb text-[12px] uppercase tracking-[0.25em] transition-all hover:-translate-y-0.5 disabled:opacity-50 disabled:cursor-not-allowed rf-glow-sap"
+              style={{ background: 'var(--rf-sap)', color: 'var(--rf-forest)' }}>
+              <span>{loading ? 'Working the soil…' : isSignUp ? 'Begin the loop' : 'Step inside'}</span>
+              <span className="flex items-center justify-center size-11 rounded-full transition-transform group-hover:rotate-45"
+                    style={{ background: 'var(--rf-forest)', color: 'var(--rf-sap)' }}>
+                {loading ? (
+                  <span className="size-4 border-2 border-current border-t-transparent rounded-full animate-spin" />
+                ) : (
+                  <svg viewBox="0 0 24 24" className="size-4" fill="none" stroke="currentColor" strokeWidth="2">
+                    <path d="M7 17L17 7M9 7h8v8" strokeLinecap="round" strokeLinejoin="round" />
+                  </svg>
                 )}
+              </span>
+            </button>
 
-                <label className="block">
-                  <span className="text-sm font-medium text-slate-700 dark:text-white">Email address</span>
-                  <input
-                    type="email"
-                    value={email}
-                    onChange={(e) => setEmail(e.target.value)}
-                    required
-                    className="mt-1 block w-full rounded-lg border-gray-300 dark:border-none bg-white dark:bg-[#234829] text-slate-900 dark:text-white placeholder:text-slate-400 dark:placeholder:text-[#92c99b] focus:border-[#13ec37] focus:ring-[#13ec37] focus:ring-1 sm:text-sm h-12 px-4 shadow-sm"
-                    placeholder="you@company.com"
-                  />
-                </label>
+            <p className="text-center font-instrument italic text-base mt-6"
+               style={{ color: 'rgba(241,234,216,.6)' }}>
+              {isSignUp ? 'Already part of the harvest? ' : 'New to the table? '}
+              <button type="button"
+                onClick={() => { setIsSignUp(!isSignUp); setError(''); setSelectedRole(null); }}
+                className="not-italic font-mono-jb text-[10px] uppercase tracking-[0.25em] ml-1 underline underline-offset-4 hover:no-underline"
+                style={{ color: 'var(--rf-sap)' }}>
+                {isSignUp ? 'Sign in' : 'Pull up a chair'}
+              </button>
+            </p>
+          </form>
 
-                <label className="block">
-                  <div className="flex justify-between items-center mb-1">
-                    <span className="text-sm font-medium text-slate-700 dark:text-white">Password</span>
-                    {!isSignUp && (
-                      <a href="#" className="text-xs text-[#13ec37] hover:text-[#0fd630] font-medium">
-                        Forgot password?
-                      </a>
-                    )}
-                  </div>
-                  <div className="relative">
-                    <input
-                      type={showPassword ? "text" : "password"}
-                      value={password}
-                      onChange={(e) => setPassword(e.target.value)}
-                      required
-                      className="block w-full rounded-lg border-gray-300 dark:border-none bg-white dark:bg-[#234829] text-slate-900 dark:text-white placeholder:text-slate-400 dark:placeholder:text-[#92c99b] focus:border-[#13ec37] focus:ring-[#13ec37] focus:ring-1 sm:text-sm h-12 px-4 pr-12 shadow-sm"
-                      placeholder="••••••••"
-                      minLength={6}
-                    />
-                    <button
-                      type="button"
-                      onClick={() => setShowPassword(!showPassword)}
-                      className="absolute inset-y-0 right-0 flex items-center pr-3 text-slate-400 dark:text-[#92c99b] hover:text-slate-600 dark:hover:text-white transition-colors"
-                      aria-label={showPassword ? "Hide password" : "Show password"}
-                    >
-                      <span className="material-symbols-outlined text-xl">
-                        {showPassword ? "visibility_off" : "visibility"}
-                      </span>
-                    </button>
-                  </div>
-                </label>
-
-                <div className="flex flex-col gap-4 mt-2">
-                  <button
-                    type="submit"
-                    disabled={loading}
-                    className="flex w-full cursor-pointer items-center justify-center overflow-hidden rounded-lg h-12 px-5 bg-[#13ec37] hover:bg-[#0fd630] text-[#102213] text-base font-bold leading-normal tracking-[0.015em] transition-colors shadow-[0_0_15px_rgba(19,236,55,0.4)] disabled:opacity-50 disabled:cursor-not-allowed"
-                  >
-                    {loading ? 'Please wait...' : isSignUp ? 'Sign Up' : 'Sign In'}
-                  </button>
-
-                  <p className="text-center text-sm text-slate-500 dark:text-[#92c99b]">
-                    {isSignUp ? "Already have an account? " : "Don't have an account? "}
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setIsSignUp(!isSignUp);
-                        setError('');
-                        setSelectedRole(null);
-                      }}
-                      className="font-semibold text-[#13ec37] hover:underline"
-                    >
-                      {isSignUp ? 'Sign in' : 'Sign up'}
-                    </button>
-                  </p>
-                </div>
-              </form>
-            </div>
-
-            {/* Terms Footer */}
-            <div className="px-6 py-4 bg-gray-50 dark:bg-[#112214] border-t border-gray-200 dark:border-white/5 flex justify-center">
-              <p className="text-xs text-slate-400 dark:text-gray-500 text-center">
-                By signing {isSignUp ? 'up' : 'in'}, you agree to our{' '}
-                <a href="#" className="underline hover:text-[#13ec37]">Terms</a> and{' '}
-                <a href="#" className="underline hover:text-[#13ec37]">Privacy Policy</a>.
-              </p>
-            </div>
-          </div>
-
-          {/* Footer Links */}
-          <div className="flex justify-center gap-6 text-xs font-medium text-white/60">
-            <Link href="#" className="hover:text-[#13ec37] transition-colors">Help Center</Link>
-            <Link href="#" className="hover:text-[#13ec37] transition-colors">Platform Status</Link>
-            <Link href="#" className="hover:text-[#13ec37] transition-colors">Contact Support</Link>
+          <div className="mt-12 pt-6 border-t flex flex-wrap justify-between gap-4 font-mono-jb text-[10px] uppercase tracking-[0.3em] opacity-60"
+               style={{ borderColor: 'rgba(241,234,216,.10)' }}>
+            <span>
+              By {isSignUp ? 'signing up' : 'signing in'}, you agree to our{' '}
+              <a href="#" className="hover:text-[color:var(--rf-sap)] underline underline-offset-4">Terms</a> &{' '}
+              <a href="#" className="hover:text-[color:var(--rf-sap)] underline underline-offset-4">Privacy</a>.
+            </span>
+            <Link href="/" className="hover:text-[color:var(--rf-sap)]">← Back to almanac</Link>
           </div>
         </div>
       </main>
@@ -374,14 +306,52 @@ function LoginForm() {
   );
 }
 
+function Field({
+  label, hint, right, children,
+}: { label: string; hint?: string; right?: React.ReactNode; children: React.ReactNode }) {
+  return (
+    <label className="block">
+      <div className="flex items-end justify-between mb-2">
+        <div className="flex items-baseline gap-3">
+          <span className="font-fraunces text-base font-medium" style={{ color: 'var(--rf-bone)' }}>{label}</span>
+          {hint && <span className="font-mono-jb text-[10px] uppercase tracking-[0.3em] opacity-50">{hint}</span>}
+        </div>
+        {right}
+      </div>
+      {children}
+    </label>
+  );
+}
+
+function RolePill({
+  icon, label, sub, selected, onClick,
+}: { icon: string; label: string; sub: string; selected: boolean; onClick: () => void }) {
+  return (
+    <button type="button" onClick={onClick}
+      className="group relative p-4 rounded-xl border-2 text-left transition-all hover:-translate-y-0.5"
+      style={{
+        borderColor: selected ? 'var(--rf-sap)' : 'rgba(241,234,216,.16)',
+        background: selected ? 'rgba(200,255,77,.06)' : 'rgba(241,234,216,.02)',
+      }}>
+      <div className="flex items-center justify-between mb-2">
+        <span className="material-symbols-outlined" style={{ color: selected ? 'var(--rf-sap)' : 'var(--rf-bone)', fontSize: 24 }}>
+          {icon}
+        </span>
+        {selected && <span className="size-2 rounded-full" style={{ background: 'var(--rf-sap)' }} />}
+      </div>
+      <p className="font-fraunces fraunces-wonk text-xl font-medium" style={{ color: 'var(--rf-bone)' }}>{label}</p>
+      <p className="font-mono-jb text-[10px] uppercase tracking-[0.25em] opacity-60 mt-1">{sub}</p>
+    </button>
+  );
+}
+
 export default function LoginPage() {
   return (
     <Suspense fallback={
-      <div className="min-h-screen bg-[#102213] flex items-center justify-center">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-[#13ec37] mx-auto mb-4"></div>
-          <p className="text-white">Loading...</p>
-        </div>
+      <div className="min-h-screen flex items-center justify-center" style={{ background: 'var(--rf-forest)' }}>
+        <p className="font-instrument italic text-2xl" style={{ color: 'var(--rf-bone)' }}>
+          unlocking the gate<span className="animate-pulse">…</span>
+        </p>
       </div>
     }>
       <LoginForm />

@@ -141,11 +141,17 @@ export default function MapView({ listings, onClaimListing, selectedListingId, o
 
   const activeListings = listings.filter((listing) => listing.status === 'active');
 
-  // Custom food-themed pin icon with bright, visible colors
+  // Listing pins use the editorial sap accent (selected = bright sap, default = sap-deep).
+  // SVG fills can't read CSS vars at runtime, so the hex values are resolved from the
+  // theme palette and kept in sync via these constants:
+  const PIN_FILL_SELECTED = '#c8ff4d'; // --rf-sap
+  const PIN_FILL_DEFAULT  = '#9ad32a'; // --rf-sap-deep
+  const PIN_SHADOW        = '#0d1a10'; // --rf-forest
+
   const createCustomIcon = (isSelected: boolean = false) => {
     const size = isSelected ? 50 : 40;
-    const color = isSelected ? '#f97316' : '#ea580c'; // bright orange-500 or orange-600
-    const shadowColor = '#9a3412'; // orange-800 for shadow
+    const color = isSelected ? PIN_FILL_SELECTED : PIN_FILL_DEFAULT;
+    const shadowColor = PIN_SHADOW;
     
     // Create a custom SVG pin with food theme
     const svg = `

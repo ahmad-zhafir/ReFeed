@@ -11,8 +11,7 @@ import { getListingsCollectionPath } from '@/lib/constants';
 import RoleGuard from '@/components/RoleGuard';
 import Link from 'next/link';
 import MapView from '@/components/MapView';
-import { signOut } from '@/lib/firebase';
-import toast from 'react-hot-toast';
+import { FarmerHeader } from '@/components/FarmerHeader';
 
 function calculateDistance(lat1: number, lon1: number, lat2: number, lon2: number): number {
   const R = 6371;
@@ -44,50 +43,34 @@ function FarmerMapContent() {
   const dropdownRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
-    const handleClickOutside = (event: MouseEvent) => {
-      if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
-        setProfileDropdownOpen(false);
-      }
+    const handler = (e: MouseEvent) => {
+      if (dropdownRef.current && !dropdownRef.current.contains(e.target as Node)) setProfileDropdownOpen(false);
     };
-
-    if (profileDropdownOpen) {
-      document.addEventListener('mousedown', handleClickOutside);
-    }
-
-    return () => {
-      document.removeEventListener('mousedown', handleClickOutside);
-    };
+    if (profileDropdownOpen) document.addEventListener('mousedown', handler);
+    return () => document.removeEventListener('mousedown', handler);
   }, [profileDropdownOpen]);
 
   useEffect(() => {
-    const unsubscribe = onAuthStateChange(async (currentUser) => {
-      if (currentUser) {
-        setUser(currentUser);
-        const profile = await getUserProfile(currentUser.uid);
+    const unsub = onAuthStateChange(async (cu) => {
+      if (cu) {
+        setUser(cu);
+        const profile = await getUserProfile(cu.uid);
         setUserProfile(profile);
         setLoading(false);
       } else {
         router.push('/login');
       }
     });
-
-    return () => unsubscribe();
+    return () => unsub();
   }, [router]);
 
   useEffect(() => {
     const db = getFirestoreDb();
-    const listingsRef = collection(db, getListingsCollectionPath());
-    const q = query(listingsRef, where('status', '==', 'live'));
-    
-    const unsubscribe = onSnapshot(q, (snapshot) => {
-      const listingsData = snapshot.docs.map((doc) => ({
-        id: doc.id,
-        ...doc.data(),
-      })) as MarketplaceListing[];
-      setListings(listingsData);
+    const q = query(collection(db, getListingsCollectionPath()), where('status', '==', 'live'));
+    const unsub = onSnapshot(q, (snap) => {
+      setListings(snap.docs.map((d) => ({ id: d.id, ...d.data() })) as MarketplaceListing[]);
     });
-
-    return () => unsubscribe();
+    return () => unsub();
   }, []);
 
   useEffect(() => {
@@ -95,158 +78,74 @@ function FarmerMapContent() {
       setFilteredListings(listings);
       return;
     }
-
-    const filtered = listings.filter((listing) => {
-      const distance = calculateDistance(
-        userProfile.location!.latitude,
-        userProfile.location!.longitude,
-        listing.latitude,
-        listing.longitude
-      );
-      return distance <= (userProfile.searchRadiusKm || 10);
-    });
-
-    setFilteredListings(filtered);
+    setFilteredListings(listings.filter((l) =>
+      calculateDistance(userProfile.location!.latitude, userProfile.location!.longitude, l.latitude, l.longitude) <= (userProfile.searchRadiusKm || 10)
+    ));
   }, [listings, userProfile]);
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-[#102213] flex items-center justify-center">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-[#13ec37] mx-auto mb-4"></div>
-          <p className="text-white">Loading...</p>
-        </div>
+      <div className="min-h-screen flex items-center justify-center" style={{ background: 'var(--rf-forest)' }}>
+        <p className="font-instrument italic text-2xl" style={{ color: 'var(--rf-bone)' }}>
+          mapping the field<span className="animate-pulse">…</span>
+        </p>
       </div>
     );
   }
 
-  // Convert MarketplaceListing to Listing format for MapView component
-  const mapListings = filteredListings.map(l => ({
-    id: l.id,
-    donor_id: l.generatorUid,
-    donor_name: l.generatorName,
-    donor_contact: l.generatorContact,
-    title: l.title,
-    quantity: l.weightKg?.toString() || 'N/A',
-    address: l.address,
-    latitude: l.latitude,
-    longitude: l.longitude,
-    image_url: l.imageUrl,
-    status: 'active' as const,
-    created_at: l.createdAt,
+  const mapListings = filteredListings.map((l) => ({
+    id: l.id, donor_id: l.generatorUid, donor_name: l.generatorName,
+    donor_contact: l.generatorContact, title: l.title,
+    quantity: l.weightKg?.toString() || 'N/A', address: l.address,
+    latitude: l.latitude, longitude: l.longitude, image_url: l.imageUrl,
+    status: 'active' as const, created_at: l.createdAt,
   }));
 
   return (
-    <div className="font-display bg-[#f6f8f6] dark:bg-[#102213] text-slate-900 dark:text-white antialiased min-h-screen flex flex-col">
-      {/* Top Navigation - Same as Dashboard */}
-      <header className="sticky top-0 z-50 w-full border-b border-solid border-gray-200 dark:border-[#234829] bg-white/80 dark:bg-[#112214]/95 backdrop-blur-md">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex items-center justify-between h-16 gap-4">
-            {/* Logo */}
-            <Link href="/farmer" className="flex items-center gap-3 text-slate-900 dark:text-white cursor-pointer">
-              <div className="size-8 text-[#13ec37]">
-                <svg fill="none" viewBox="0 0 48 48" xmlns="http://www.w3.org/2000/svg">
-                  <path d="M42.4379 44C42.4379 44 36.0744 33.9038 41.1692 24C46.8624 12.9336 42.2078 4 42.2078 4L7.01134 4C7.01134 4 11.6577 12.932 5.96912 23.9969C0.876273 33.9029 7.27094 44 7.27094 44L42.4379 44Z" fill="currentColor"></path>
-                </svg>
-              </div>
-              <h1 className="text-white text-lg font-bold tracking-tight hidden sm:block">ReFeed</h1>
-            </Link>
+    <div className="font-fraunces antialiased min-h-screen flex flex-col"
+         style={{ background: 'var(--rf-forest)', color: 'var(--rf-bone)' }}>
 
-            {/* Right Actions */}
-            <div className="flex items-center gap-4">
-              <nav className="hidden md:flex gap-6 mr-4">
-                <Link href="/farmer" className="text-white font-medium text-sm hover:text-[#13ec37] transition-colors">
-                  Marketplace
-                </Link>
-                <Link href="/schedule" className="text-[#92c99b] font-medium text-sm hover:text-white transition-colors">
-                  Pickups
-                </Link>
-                <Link href="/orders" className="text-[#92c99b] font-medium text-sm hover:text-white transition-colors">
-                  Orders
-                </Link>
-              </nav>
-              <Link
-                href="/farmer"
-                className="px-4 py-2 bg-[#234829] hover:bg-[#32673b] text-white rounded-lg transition-colors font-medium text-sm border border-[#32673b]"
-              >
-                List View
-              </Link>
-              {userProfile && (
-                <div className="relative" ref={dropdownRef}>
-                  <button
-                    onClick={() => setProfileDropdownOpen(!profileDropdownOpen)}
-                    className="flex items-center gap-2 group"
-                  >
-                    <div className="bg-center bg-no-repeat bg-cover rounded-full size-9 ring-2 ring-[#234829] group-hover:ring-[#13ec37]/50 transition-all shadow-lg bg-gradient-to-br from-[#13ec37] to-green-400 flex items-center justify-center">
-                      <span className="text-[#102213] font-bold text-sm">{userProfile?.name?.charAt(0).toUpperCase() || 'U'}</span>
-                    </div>
-                    <span className="material-symbols-outlined text-[#92c99b] text-sm hidden sm:block group-hover:text-white transition-colors">expand_more</span>
-                  </button>
+      <FarmerHeader
+        userProfile={userProfile}
+        active="map"
+        profileDropdownOpen={profileDropdownOpen}
+        setProfileDropdownOpen={setProfileDropdownOpen}
+        dropdownRef={dropdownRef}
+        router={router}
+        extra={
+          <Link href="/farmer"
+                className="hidden sm:inline-flex items-center gap-2 px-4 h-9 rounded-full border font-mono-jb text-[10px] uppercase tracking-[0.25em] hover:bg-white/5 transition-colors"
+                style={{ borderColor: 'rgba(241,234,216,.2)' }}>
+            <span className="material-symbols-outlined text-base">view_list</span>
+            List view
+          </Link>
+        }
+      />
 
-                  {profileDropdownOpen && (
-                    <div className="absolute right-0 mt-2 w-56 bg-[#1c2e20] rounded-lg shadow-xl border border-[#234829] py-2 z-50">
-                      <div className="px-4 py-3 border-b border-[#234829]">
-                        <p className="text-sm font-semibold text-white">{userProfile.name}</p>
-                        <p className="text-xs text-[#92c99b] mt-1">{userProfile.contact}</p>
-                        {userProfile.email && (
-                          <p className="text-xs text-[#92c99b] mt-1">{userProfile.email}</p>
-                        )}
-                      </div>
-                      <Link
-                        href="/settings"
-                        className="block px-4 py-2 text-sm font-medium text-[#92c99b] hover:text-white hover:bg-[#234829] transition-colors"
-                        onClick={() => setProfileDropdownOpen(false)}
-                      >
-                        Settings
-                      </Link>
-                      <Link
-                        href="/orders"
-                        className="block px-4 py-2 text-sm font-medium text-[#92c99b] hover:text-white hover:bg-[#234829] transition-colors"
-                        onClick={() => setProfileDropdownOpen(false)}
-                      >
-                        My Orders
-                      </Link>
-                      <Link
-                        href="/schedule"
-                        className="block px-4 py-2 text-sm font-medium text-[#92c99b] hover:text-white hover:bg-[#234829] transition-colors"
-                        onClick={() => setProfileDropdownOpen(false)}
-                      >
-                        Schedule
-                      </Link>
-                      <button
-                        onClick={async () => {
-                          try {
-                            setProfileDropdownOpen(false);
-                            await signOut();
-                            await new Promise(resolve => setTimeout(resolve, 100));
-                            router.push('/');
-                          } catch (error: any) {
-                            console.error('Logout error:', error);
-                            toast.error('Failed to sign out. Please try again.');
-                          }
-                        }}
-                        className="w-full text-left px-4 py-2 text-sm font-medium text-red-400 hover:text-red-300 hover:bg-[#234829] transition-colors flex items-center gap-2"
-                      >
-                        <span className="material-symbols-outlined text-sm">logout</span>
-                        Sign Out
-                      </button>
-                    </div>
-                  )}
-                </div>
-              )}
-            </div>
-          </div>
+      {/* Caption strip above map */}
+      <div className="border-b px-4 sm:px-6 lg:px-10 py-3 flex items-center justify-between"
+           style={{ borderColor: 'rgba(241,234,216,.10)', background: 'rgba(241,234,216,.02)' }}>
+        <div className="flex items-center gap-4">
+          <span className="rf-eyebrow flex items-center gap-2">
+            <span className="size-1.5 rounded-full animate-pulse" style={{ background: 'var(--rf-sap)' }} />
+            Live field · plate &amp; pin
+          </span>
+          <span className="font-instrument italic text-base hidden md:inline-block"
+                style={{ color: 'rgba(241,234,216,.65)' }}>
+            {filteredListings.length} {filteredListings.length === 1 ? 'parcel' : 'parcels'} within your orbit
+          </span>
         </div>
-      </header>
+        <span className="font-mono-jb text-[10px] uppercase tracking-[0.3em] opacity-60 hidden lg:block">
+          Chapter 02 · The Cartography
+        </span>
+      </div>
 
-      <div className="flex-1 h-[calc(100vh-64px)]">
+      <div className="flex-1 relative" style={{ height: 'calc(100vh - 113px)' }}>
         <MapView
           listings={mapListings}
           onClaimListing={(listing) => {
-            const marketplaceListing = filteredListings.find(l => l.id === listing.id);
-            if (marketplaceListing) {
-              router.push(`/farmer/listings/${marketplaceListing.id}`);
-            }
+            const m = filteredListings.find((l) => l.id === listing.id);
+            if (m) router.push(`/farmer/listings/${m.id}`);
           }}
           currentUserId={user?.uid || null}
         />
@@ -254,4 +153,3 @@ function FarmerMapContent() {
     </div>
   );
 }
-

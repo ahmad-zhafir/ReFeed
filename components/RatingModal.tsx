@@ -1,8 +1,6 @@
 'use client';
 
 import { useState } from 'react';
-import { User } from 'firebase/auth';
-import { Rating } from '@/lib/types';
 import toast from 'react-hot-toast';
 
 interface RatingModalProps {
@@ -128,106 +126,122 @@ export default function RatingModal({
     }
   };
 
+  const ratingLabels = ['', 'Poor', 'Fair', 'Good', 'Very Good', 'Excellent'];
+
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
-      <div className="bg-white dark:bg-[#1c2e20] rounded-xl shadow-2xl max-w-md w-full border border-gray-200 dark:border-[#234829] overflow-hidden">
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 backdrop-blur-md"
+         style={{ background: 'rgba(10, 22, 12, 0.75)' }}>
+      <div className="font-fraunces rounded-2xl shadow-2xl max-w-md w-full overflow-hidden border"
+           style={{ background: 'var(--rf-moss)', color: 'var(--rf-bone)', borderColor: 'rgba(241,234,216,0.14)' }}>
         {/* Header */}
-        <div className="px-6 py-4 border-b border-gray-200 dark:border-[#234829] flex items-center justify-between">
-          <h2 className="text-xl font-bold text-slate-900 dark:text-white">Rate Your Experience</h2>
+        <div className="px-6 py-5 border-b flex items-center justify-between"
+             style={{ borderColor: 'rgba(241,234,216,0.10)' }}>
+          <div>
+            <p className="rf-eyebrow mb-1">§ Field note</p>
+            <h2 className="font-fraunces fraunces-wonk text-2xl font-light tracking-[-0.03em]">
+              Rate the <span className="italic" style={{ color: 'var(--rf-sap)' }}>kitchen</span>
+            </h2>
+          </div>
           <button
             onClick={onClose}
-            className="text-gray-400 hover:text-gray-600 dark:hover:text-white transition-colors"
+            aria-label="Close"
+            className="size-9 rounded-full flex items-center justify-center opacity-70 hover:opacity-100 transition-opacity border"
+            style={{ borderColor: 'rgba(241,234,216,0.18)' }}
           >
             <span className="material-symbols-outlined">close</span>
           </button>
         </div>
 
-        {/* Content */}
         <div className="px-6 py-6 space-y-6">
-          {/* Order Info */}
-          <div className="bg-gray-50 dark:bg-[#112214] rounded-lg p-4 border border-gray-200 dark:border-[#234829]">
-            <p className="text-sm text-gray-600 dark:text-[#92c99b] mb-1">Order</p>
-            <p className="font-semibold text-slate-900 dark:text-white">{listingTitle}</p>
+          {/* Order info */}
+          <div className="rounded-xl p-4 border"
+               style={{ borderColor: 'rgba(241,234,216,0.10)', background: 'rgba(13,26,16,0.5)' }}>
+            <p className="rf-eyebrow mb-1">Parcel</p>
+            <p className="font-fraunces text-lg font-medium">{listingTitle}</p>
             {generatorName && (
-              <p className="text-sm text-gray-500 dark:text-[#5d8265] mt-1">from {generatorName}</p>
+              <p className="font-instrument italic text-base mt-1" style={{ color: 'rgba(241,234,216,0.65)' }}>
+                from {generatorName}
+              </p>
             )}
           </div>
 
-          {/* Star Rating */}
+          {/* Star rating */}
           <div>
-            <label className="block text-sm font-medium text-slate-900 dark:text-white mb-3">
-              How would you rate this experience? *
-            </label>
+            <label className="rf-eyebrow mb-3 block">How was it? *</label>
             <div className="flex gap-2 justify-center">
-              {[1, 2, 3, 4, 5].map((star) => (
-                <button
-                  key={star}
-                  type="button"
-                  onClick={() => setRating(star)}
-                  onMouseEnter={() => setHoveredRating(star)}
-                  onMouseLeave={() => setHoveredRating(0)}
-                  className="focus:outline-none transition-transform hover:scale-110"
-                >
-                  <span
-                    className={`material-symbols-outlined text-4xl ${
-                      star <= (hoveredRating || rating)
-                        ? 'text-yellow-400 fill-yellow-400'
-                        : 'text-gray-300 dark:text-[#5d8265]'
-                    }`}
+              {[1, 2, 3, 4, 5].map((star) => {
+                const active = star <= (hoveredRating || rating);
+                return (
+                  <button
+                    key={star}
+                    type="button"
+                    onClick={() => setRating(star)}
+                    onMouseEnter={() => setHoveredRating(star)}
+                    onMouseLeave={() => setHoveredRating(0)}
+                    className="focus:outline-none transition-transform hover:scale-110"
                   >
-                    star
-                  </span>
-                </button>
-              ))}
+                    <span
+                      className="material-symbols-outlined text-4xl transition-colors"
+                      style={{
+                        color: active ? 'var(--rf-sap)' : 'rgba(241,234,216,0.25)',
+                        fontVariationSettings: active ? '"FILL" 1' : '"FILL" 0',
+                      }}
+                    >
+                      star
+                    </span>
+                  </button>
+                );
+              })}
             </div>
             {rating > 0 && (
-              <p className="text-center text-sm text-gray-600 dark:text-[#92c99b] mt-2">
-                {rating === 1 && 'Poor'}
-                {rating === 2 && 'Fair'}
-                {rating === 3 && 'Good'}
-                {rating === 4 && 'Very Good'}
-                {rating === 5 && 'Excellent'}
+              <p className="text-center font-instrument italic text-base mt-3"
+                 style={{ color: 'var(--rf-sap)' }}>
+                {ratingLabels[rating]}
               </p>
             )}
           </div>
 
           {/* Comment */}
           <div>
-            <label className="block text-sm font-medium text-slate-900 dark:text-white mb-2">
-              Additional Comments (Optional)
-            </label>
+            <label className="rf-eyebrow mb-2 block">Notes (optional)</label>
             <textarea
               value={comment}
               onChange={(e) => setComment(e.target.value)}
-              placeholder="Share your experience..."
+              placeholder="Share what stood out…"
               rows={4}
-              className="w-full px-4 py-3 rounded-lg border border-gray-300 dark:border-[#234829] bg-white dark:bg-[#102213] text-slate-900 dark:text-white placeholder:text-gray-400 dark:placeholder:text-[#5d8265] focus:outline-none focus:ring-2 focus:ring-[#13ec37] focus:border-transparent resize-none"
+              className="rf-input w-full px-4 py-3 resize-none"
             />
           </div>
         </div>
 
         {/* Footer */}
-        <div className="px-6 py-4 border-t border-gray-200 dark:border-[#234829] flex gap-3">
+        <div className="px-6 py-5 border-t flex gap-3"
+             style={{ borderColor: 'rgba(241,234,216,0.10)' }}>
           <button
             onClick={onClose}
             disabled={submitting}
-            className="flex-1 px-4 py-2.5 rounded-lg border border-gray-300 dark:border-[#234829] text-slate-700 dark:text-white font-medium hover:bg-gray-100 dark:hover:bg-[#234829] transition-colors disabled:opacity-50"
+            className="flex-1 inline-flex items-center justify-center h-12 rounded-full font-mono-jb text-[11px] uppercase tracking-[0.25em] border transition-colors hover:bg-white/5 disabled:opacity-50"
+            style={{ borderColor: 'rgba(241,234,216,0.2)', color: 'var(--rf-bone)' }}
           >
             Cancel
           </button>
           <button
             onClick={handleSubmit}
             disabled={submitting || rating === 0}
-            className="flex-1 px-4 py-2.5 rounded-lg bg-[#13ec37] hover:bg-[#0fd630] text-[#102213] font-bold transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+            className="group flex-1 inline-flex items-center justify-between pl-5 pr-1.5 h-12 rounded-full font-mono-jb text-[11px] uppercase tracking-[0.25em] transition-all hover:-translate-y-0.5 disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:translate-y-0"
+            style={{ background: 'var(--rf-sap)', color: 'var(--rf-forest)' }}
           >
-            {submitting ? (
-              <>
-                <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-[#102213]"></div>
-                Submitting...
-              </>
-            ) : (
-              'Submit Rating'
-            )}
+            <span>{submitting ? 'Submitting…' : 'Submit'}</span>
+            <span className="size-9 rounded-full flex items-center justify-center transition-transform group-hover:rotate-45"
+                  style={{ background: 'var(--rf-forest)', color: 'var(--rf-sap)' }}>
+              {submitting ? (
+                <span className="size-4 border-2 border-current border-t-transparent rounded-full animate-spin" />
+              ) : (
+                <svg viewBox="0 0 24 24" className="size-4" fill="none" stroke="currentColor" strokeWidth="2.5">
+                  <path d="M5 13l4 4L19 7" strokeLinecap="round" strokeLinejoin="round" />
+                </svg>
+              )}
+            </span>
           </button>
         </div>
       </div>

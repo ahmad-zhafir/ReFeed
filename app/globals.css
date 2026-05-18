@@ -2,31 +2,258 @@
 @tailwind components;
 @tailwind utilities;
 
+/* —————————————————————————————————————————————————————————————————
+   ReFeed editorial palette
+   The whole app is dark by design (forest + bone + sap). There is no
+   light variant — the platform's voice is a forager's almanac.
+   —————————————————————————————————————————————————————————————————*/
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
+  --rf-forest:     #0d1a10;   /* page background */
+  --rf-moss:       #1a2f1d;   /* default border / secondary surface */
+  --rf-card:       #1c2e20;   /* card surface (lighter than moss) */
+  --rf-ink:        #0a160c;   /* deepest forest — nested surfaces, input bg */
+  --rf-bone:       #f1ead8;   /* primary text */
+  --rf-cream:      #e8dfc4;   /* warm light accent */
+  --rf-bone-muted: #a8b3a0;   /* secondary text */
+  --rf-bone-dim:   #5d8265;   /* tertiary muted text */
+  --rf-sap:        #c8ff4d;   /* primary accent */
+  --rf-sap-deep:   #9ad32a;   /* sap variant — used on landing CTA */
+  --rf-sap-bright: #11d632;   /* sap hover (bright) */
+  --rf-rust:       #d9572a;   /* error · danger · cancelled */
+  --rf-amber:      #e9c46a;   /* claimed · reserved status */
+  --rf-sky:        #6cb4f1;   /* collected · info status */
+
+  /* Alpha-baked variants — saves repeating long rgba(...) tuples */
+  --rf-bone-a04:   rgba(241, 234, 216, 0.04);
+  --rf-bone-a08:   rgba(241, 234, 216, 0.08);
+  --rf-bone-a10:   rgba(241, 234, 216, 0.10);
+  --rf-bone-a14:   rgba(241, 234, 216, 0.14);
+  --rf-bone-a18:   rgba(241, 234, 216, 0.18);
+  --rf-bone-a25:   rgba(241, 234, 216, 0.25);
+  --rf-sap-a06:    rgba(200, 255, 77, 0.06);
+  --rf-sap-a10:    rgba(200, 255, 77, 0.10);
+  --rf-sap-a20:    rgba(200, 255, 77, 0.20);
+
+  /* Editorial type stack */
+  --rf-font-display: 'Fraunces', 'Times New Roman', serif;
+  --rf-font-italic:  'Instrument Serif', 'Times New Roman', serif;
+  --rf-font-mono:    'JetBrains Mono', ui-monospace, monospace;
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
-}
-
+/* —————————————————————————————————————————————————————————————————
+   Base
+   —————————————————————————————————————————————————————————————————*/
 body {
-  color: var(--foreground);
-  background: var(--background);
-  font-family: 'Inter', Arial, Helvetica, sans-serif;
+  color: var(--rf-bone);
+  background: var(--rf-forest);
+  font-family: var(--rf-font-display);
+  font-optical-sizing: auto;
 }
 
-.font-display {
-  font-family: 'Inter', sans-serif;
+/* —————————————————————————————————————————————————————————————————
+   Editorial typographic stack — class aliases used across the app
+   —————————————————————————————————————————————————————————————————*/
+.font-fraunces   { font-family: var(--rf-font-display); font-optical-sizing: auto; }
+.font-instrument { font-family: var(--rf-font-italic); }
+.font-mono-jb    { font-family: var(--rf-font-mono); }
+
+/* WONK toggle for Fraunces — alternate, more characterful glyphs */
+.fraunces-wonk { font-variation-settings: "SOFT" 100, "WONK" 1; }
+.fraunces-soft { font-variation-settings: "SOFT" 100, "WONK" 0; }
+
+/* —————————————————————————————————————————————————————————————————
+   Shared interface primitives so every page inherits the theme
+   —————————————————————————————————————————————————————————————————*/
+.rf-surface {
+  background: var(--rf-moss);
+  border: 1px solid var(--rf-bone-a14);
+  border-radius: 1.25rem;
+}
+.rf-surface-inset {
+  background: rgba(241, 234, 216, 0.03);
+  border: 1px solid var(--rf-bone-a10);
+  border-radius: 1rem;
 }
 
-@layer utilities {
-  .text-balance {
-    text-wrap: balance;
+.rf-input {
+  background: var(--rf-bone-a04);
+  border: 1px solid rgba(241, 234, 216, 0.16);
+  color: var(--rf-bone);
+  border-radius: 0.5rem;
+  font-family: var(--rf-font-display);
+  transition: border-color .15s ease, box-shadow .15s ease, background .15s ease;
+}
+.rf-input:focus,
+.rf-input:focus-visible {
+  outline: none;
+  border-color: var(--rf-sap);
+  box-shadow: 0 0 0 3px rgba(200, 255, 77, 0.18);
+  background: rgba(241, 234, 216, 0.06);
+}
+.rf-input::placeholder {
+  color: rgba(241, 234, 216, 0.4);
+  font-style: italic;
+}
+
+.rf-btn-primary {
+  background: var(--rf-sap);
+  color: var(--rf-forest);
+  font-family: var(--rf-font-mono);
+  font-size: 11px;
+  letter-spacing: 0.22em;
+  text-transform: uppercase;
+  padding: 0.7rem 1.5rem;
+  border-radius: 9999px;
+  transition: transform .15s ease, box-shadow .15s ease;
+  box-shadow: 0 8px 30px -8px rgba(200, 255, 77, 0.5);
+}
+.rf-btn-primary:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 12px 38px -8px rgba(200, 255, 77, 0.7);
+}
+.rf-btn-primary:disabled { opacity: .5; cursor: not-allowed; }
+
+.rf-btn-ghost {
+  background: transparent;
+  color: var(--rf-bone);
+  border: 1px solid var(--rf-bone-a25);
+  font-family: var(--rf-font-mono);
+  font-size: 11px;
+  letter-spacing: 0.22em;
+  text-transform: uppercase;
+  padding: 0.7rem 1.5rem;
+  border-radius: 9999px;
+  transition: all .15s ease;
+}
+.rf-btn-ghost:hover {
+  background: rgba(241, 234, 216, 0.05);
+  border-color: var(--rf-sap);
+  color: var(--rf-sap);
+}
+
+.rf-eyebrow {
+  font-family: var(--rf-font-mono);
+  font-size: 10px;
+  letter-spacing: 0.32em;
+  text-transform: uppercase;
+  color: var(--rf-sap);
+  opacity: 0.85;
+}
+
+.rf-headline {
+  font-family: var(--rf-font-display);
+  font-variation-settings: "SOFT" 100, "WONK" 1;
+  font-weight: 300;
+  letter-spacing: -0.035em;
+  line-height: 0.95;
+  color: var(--rf-bone);
+}
+.rf-headline em,
+.rf-headline .italic {
+  font-family: var(--rf-font-italic);
+  color: var(--rf-sap);
+  font-style: italic;
+}
+
+/* —————————————————————————————————————————————————————————————————
+   Decorative & atmospheric utilities
+   —————————————————————————————————————————————————————————————————*/
+
+/* Glowing sap accent — primary CTA / focus rings */
+.rf-glow-sap {
+  box-shadow:
+    0 0 0 1px rgba(200, 255, 77, .35),
+    0 12px 40px -8px rgba(200, 255, 77, .55);
+}
+
+/* Decorative dashed underline */
+.rf-dashed-rule {
+  background-image: linear-gradient(to right, currentColor 50%, transparent 50%);
+  background-size: 8px 1px;
+  background-repeat: repeat-x;
+  background-position: 0 100%;
+}
+
+/* Vertical text — used in side margins (e.g. "ReFeed · No.001") */
+.rf-vertical {
+  writing-mode: vertical-rl;
+  text-orientation: mixed;
+  transform: rotate(180deg);
+}
+
+/* Radial vignette — softens the page edges */
+.rf-vignette {
+  background: radial-gradient(
+    ellipse at 50% 35%,
+    transparent 0%,
+    transparent 45%,
+    rgba(0, 0, 0, .55) 100%
+  );
+}
+
+/* Subtle dotted backdrop — implies a manuscript grid */
+.rf-dotgrid {
+  background-image: radial-gradient(rgba(241, 234, 216, .08) 1px, transparent 1px);
+  background-size: 22px 22px;
+}
+
+/* Grain noise overlay — organic texture for atmospheric layers */
+.rf-grain::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  z-index: 1;
+  opacity: 0.18;
+  mix-blend-mode: overlay;
+  background-image: url("data:image/svg+xml;utf8,<svg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2' stitchTiles='stitch'/><feColorMatrix values='0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0.6 0'/></filter><rect width='100%' height='100%' filter='url(%23n)'/></svg>");
+}
+
+/* —————————————————————————————————————————————————————————————————
+   Motion
+   —————————————————————————————————————————————————————————————————*/
+
+/* Marquee — live stats strip on the landing page */
+@keyframes rf-marquee {
+  from { transform: translateX(0); }
+  to   { transform: translateX(-50%); }
+}
+.rf-marquee-track {
+  animation: rf-marquee 38s linear infinite;
+  will-change: transform;
+}
+
+/* Slow spin for circular seals */
+@keyframes rf-spin-slow {
+  from { transform: rotate(0deg); }
+  to   { transform: rotate(360deg); }
+}
+.rf-spin-slow { animation: rf-spin-slow 28s linear infinite; }
+
+/* Staggered fade-up — apply with inline animation-delay */
+@keyframes rf-fade-up {
+  from { opacity: 0; transform: translateY(14px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+.rf-fade-up {
+  opacity: 0;
+  animation: rf-fade-up .9s cubic-bezier(.2, .7, .2, 1) forwards;
+}
+
+/* Respect reduced-motion preferences */
+@media (prefers-reduced-motion: reduce) {
+  .rf-marquee-track,
+  .rf-spin-slow,
+  .rf-fade-up {
+    animation: none;
   }
+  .rf-fade-up { opacity: 1; transform: none; }
 }
 
+/* —————————————————————————————————————————————————————————————————
+   Tailwind utility extensions
+   —————————————————————————————————————————————————————————————————*/
+@layer utilities {
+  .text-balance { text-wrap: balance; }
+  .text-pretty  { text-wrap: pretty; }
+}

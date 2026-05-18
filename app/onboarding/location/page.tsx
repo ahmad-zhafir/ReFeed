@@ -20,43 +20,26 @@ export default function LocationOnboardingPage() {
 
   useEffect(() => {
     const unsub = onAuthStateChange(async (user) => {
-      if (!user) {
-        router.push('/login?redirect=/onboarding/location');
-        return;
-      }
-
+      if (!user) { router.push('/login?redirect=/onboarding/location'); return; }
       const profile = await getUserProfile(user.uid);
-      if (!profile?.role) {
-        router.push('/onboarding/role');
-        return;
-      }
-
+      if (!profile?.role) { router.push('/onboarding/role'); return; }
       setRole(profile.role);
       if (profile.searchRadiusKm) setRadiusKm(profile.searchRadiusKm);
-      if (profile.location?.latitude && profile.location?.longitude) {
-        setLocation(profile.location as any);
-      }
-
+      if (profile.location?.latitude && profile.location?.longitude) setLocation(profile.location as any);
       setLoading(false);
     });
     return () => unsub();
   }, [router]);
 
-  const canSave = useMemo(() => {
-    return !!role && (!!location || manualAddress.trim().length > 3);
-  }, [role, location, manualAddress]);
+  const canSave = useMemo(() => !!role && (!!location || manualAddress.trim().length > 3), [role, location, manualAddress]);
 
   const requestBrowserLocation = async () => {
-    if (!navigator.geolocation) {
-      toast.error('Geolocation is not supported in this browser.');
-      return;
-    }
+    if (!navigator.geolocation) { toast.error('Geolocation is not supported in this browser.'); return; }
     toast.loading('Requesting location…', { id: 'loc' });
     navigator.geolocation.getCurrentPosition(
       (pos) => {
         toast.dismiss('loc');
-        const loc: Loc = { latitude: pos.coords.latitude, longitude: pos.coords.longitude };
-        setLocation(loc);
+        setLocation({ latitude: pos.coords.latitude, longitude: pos.coords.longitude });
         toast.success('Location captured.');
       },
       (err) => {
@@ -69,60 +52,31 @@ export default function LocationOnboardingPage() {
   };
 
   const useTestLocation = async () => {
-    // Test location: FCSIT UPM, Serdang
     const testAddress = 'FCSIT UPM, Serdang, Selangor, Malaysia';
-    
     toast.loading('Setting test location…', { id: 'test-loc' });
-    
     try {
-      // Try to geocode the address
-      const response = await fetch('/api/geocode', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+      const r = await fetch('/api/geocode', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ address: testAddress }),
       });
-      
-      if (response.ok) {
-        const data = await response.json();
-        if (data.latitude && data.longitude) {
-          setLocation({
-            latitude: data.latitude,
-            longitude: data.longitude,
-            address: data.formatted_address || testAddress,
-          });
-          setManualAddress(data.formatted_address || testAddress);
-          toast.dismiss('test-loc');
-          toast.success('Test location set: FCSIT UPM, Serdang');
+      if (r.ok) {
+        const d = await r.json();
+        if (d.latitude && d.longitude) {
+          setLocation({ latitude: d.latitude, longitude: d.longitude, address: d.formatted_address || testAddress });
+          setManualAddress(d.formatted_address || testAddress);
         } else {
-          // Fallback to hardcoded coordinates if geocoding fails
-          setLocation({
-            latitude: 2.9885,
-            longitude: 101.7162,
-            address: testAddress,
-          });
+          setLocation({ latitude: 2.9885, longitude: 101.7162, address: testAddress });
           setManualAddress(testAddress);
-          toast.dismiss('test-loc');
-          toast.success('Test location set: FCSIT UPM, Serdang');
         }
       } else {
-        // Fallback to hardcoded coordinates if API fails
-        setLocation({
-          latitude: 2.9885,
-          longitude: 101.7162,
-          address: testAddress,
-        });
+        setLocation({ latitude: 2.9885, longitude: 101.7162, address: testAddress });
         setManualAddress(testAddress);
-        toast.dismiss('test-loc');
-        toast.success('Test location set: FCSIT UPM, Serdang');
       }
-    } catch (error) {
-      console.error('Geocoding error:', error);
-      // Fallback to hardcoded coordinates
-      setLocation({
-        latitude: 2.9885,
-        longitude: 101.7162,
-        address: testAddress,
-      });
+      toast.dismiss('test-loc');
+      toast.success('Test location set: FCSIT UPM, Serdang');
+    } catch (e) {
+      console.error(e);
+      setLocation({ latitude: 2.9885, longitude: 101.7162, address: testAddress });
       setManualAddress(testAddress);
       toast.dismiss('test-loc');
       toast.success('Test location set: FCSIT UPM, Serdang');
@@ -134,29 +88,12 @@ export default function LocationOnboardingPage() {
     setSaving(true);
     try {
       const user = await new Promise<Parameters<Parameters<typeof onAuthStateChange>[0]>[0]>((resolve) => {
-        const unsub = onAuthStateChange((u) => {
-          unsub();
-          resolve(u);
-        });
+        const unsub = onAuthStateChange((u) => { unsub(); resolve(u); });
       });
-      if (!user) {
-        router.push('/login?redirect=/onboarding/location');
-        return;
-      }
-
+      if (!user) { router.push('/login?redirect=/onboarding/location'); return; }
       const updates: Partial<UserProfile> = {};
-      
-      // Only set searchRadiusKm for farmers
-      if (role === 'farmer') {
-        updates.searchRadiusKm = radiusKm;
-      }
-
-      if (location) {
-        updates.location = location;
-      } else {
-        updates.location = { latitude: 0, longitude: 0, address: manualAddress.trim() };
-      }
-
+      if (role === 'farmer') updates.searchRadiusKm = radiusKm;
+      updates.location = location || { latitude: 0, longitude: 0, address: manualAddress.trim() };
       await updateUserProfile(user.uid, updates);
       toast.success('Saved.');
       router.push(role === 'generator' ? '/generator' : '/farmer');
@@ -170,139 +107,166 @@ export default function LocationOnboardingPage() {
 
   if (loading) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-[#102213]">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-[#13ec37] mx-auto mb-4"></div>
-          <p className="text-white font-semibold">Loading...</p>
-        </div>
+      <div className="min-h-screen flex items-center justify-center" style={{ background: 'var(--rf-forest)' }}>
+        <p className="font-instrument italic text-2xl" style={{ color: 'var(--rf-bone)' }}>
+          finding your patch of soil<span className="animate-pulse">…</span>
+        </p>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-[#102213] flex items-center justify-center px-4 py-10">
-      <div className="max-w-2xl w-full bg-[#1c2e20] rounded-xl shadow-2xl border border-[#234829] p-8">
-        <div className="flex items-center gap-3 mb-8">
-          <div className="size-10 text-[#13ec37]">
-            <svg fill="none" viewBox="0 0 48 48" xmlns="http://www.w3.org/2000/svg">
-              <path d="M42.4379 44C42.4379 44 36.0744 33.9038 41.1692 24C46.8624 12.9336 42.2078 4 42.2078 4L7.01134 4C7.01134 4 11.6577 12.932 5.96912 23.9969C0.876273 33.9029 7.27094 44 7.27094 44L42.4379 44Z" fill="currentColor"></path>
-            </svg>
+    <div className="min-h-screen relative overflow-hidden flex items-center justify-center px-6 py-16"
+         style={{ background: 'var(--rf-forest)', color: 'var(--rf-bone)' }}>
+
+      <div className="pointer-events-none absolute inset-0 rf-dotgrid opacity-50" />
+      <div className="pointer-events-none absolute inset-0"
+           style={{ background: 'radial-gradient(900px 600px at 90% 100%, rgba(200,255,77,.10), transparent 60%), radial-gradient(700px 500px at 10% 0%, rgba(217,87,42,.08), transparent 60%)' }} />
+      <div className="pointer-events-none absolute inset-0 rf-vignette" />
+
+      <div className="relative z-10 max-w-3xl w-full">
+        {/* Step strip */}
+        <div className="flex items-center justify-between mb-10 rf-fade-up">
+          <div className="rf-eyebrow flex items-center gap-3">
+            <span className="size-2 rounded-full animate-pulse" style={{ background: 'var(--rf-sap)' }} />
+            Chapter 02 · Your patch of soil
           </div>
-          <div>
-            <h1 className="text-2xl font-black text-white tracking-tight">
-              Location & matching
-            </h1>
-            <p className="text-[#92c99b] text-sm mt-1">
-              We use your location to show nearby listings. Farmers can adjust their search radius.
-            </p>
-          </div>
+          <span className="font-mono-jb text-[10px] uppercase tracking-[0.3em] opacity-60 hidden md:block">
+            Step 02 of 02
+          </span>
         </div>
 
-        <div className="space-y-6">
-          <div className="p-6 rounded-xl border border-[#234829] bg-[#234829]/30">
-            <div className="flex items-center gap-2 mb-2">
-              <span className="material-symbols-outlined text-[#13ec37]">location_on</span>
-              <p className="text-sm font-bold text-white uppercase tracking-wide">Capture GPS (recommended)</p>
+        <h1 className="rf-headline text-[clamp(2.5rem,7vw,5.5rem)] mb-6 rf-fade-up" style={{ animationDelay: '.08s' }}>
+          Where do you
+          <br />
+          <span className="italic">tend?</span>
+        </h1>
+
+        <p className="font-instrument italic text-xl md:text-2xl max-w-2xl mb-12 rf-fade-up"
+           style={{ color: 'rgba(241,234,216,.7)', animationDelay: '.18s' }}>
+          {role === 'farmer'
+            ? 'A pin on the map lets the kitchens within your orbit find you.'
+            : 'A pin on the map lets the farmers nearby know where to come collect.'}
+        </p>
+
+        <div className="space-y-6 rf-fade-up" style={{ animationDelay: '.28s' }}>
+
+          {/* GPS panel */}
+          <section className="rounded-2xl p-6 border"
+                   style={{ borderColor: 'rgba(241,234,216,.14)', background: 'rgba(241,234,216,.025)' }}>
+            <div className="flex items-baseline justify-between mb-2">
+              <div className="rf-eyebrow flex items-center gap-2">
+                <span className="size-1.5 rounded-full" style={{ background: 'var(--rf-sap)' }} />
+                01 · GPS — recommended
+              </div>
+              <span className="font-mono-jb text-[9px] uppercase tracking-[0.3em] opacity-60">±5–10km</span>
             </div>
-            <p className="text-sm text-[#92c99b] mb-4">Works best for 5–10km matching.</p>
+            <p className="font-instrument italic text-base mb-5" style={{ color: 'rgba(241,234,216,.65)' }}>
+              The most accurate way to set your bench.
+            </p>
+
             <div className="flex flex-col sm:flex-row gap-3">
-              <button
-                onClick={requestBrowserLocation}
-                className="flex-1 px-6 py-3 rounded-lg bg-[#13ec37] hover:bg-[#11d632] text-[#112214] font-bold transition-all shadow-[0_0_15px_rgba(19,236,55,0.3)] flex items-center justify-center gap-2"
-              >
-                <span className="material-symbols-outlined text-lg">my_location</span>
-                Use my current location
+              <button onClick={requestBrowserLocation}
+                      className="group flex-1 inline-flex items-center justify-between pl-5 pr-1.5 h-12 rounded-full font-mono-jb text-[11px] uppercase tracking-[0.25em] transition-all hover:-translate-y-0.5 rf-glow-sap"
+                      style={{ background: 'var(--rf-sap)', color: 'var(--rf-forest)' }}>
+                <span>Use my location</span>
+                <span className="flex items-center justify-center size-9 rounded-full transition-transform group-hover:rotate-45"
+                      style={{ background: 'var(--rf-forest)', color: 'var(--rf-sap)' }}>
+                  <span className="material-symbols-outlined text-lg">my_location</span>
+                </span>
               </button>
-              
+
               {role === 'farmer' && (
-                <button
-                  onClick={useTestLocation}
-                  className="flex-1 px-6 py-3 rounded-lg bg-yellow-500/20 hover:bg-yellow-500/30 text-yellow-400 hover:text-yellow-300 font-bold transition-all border border-yellow-500/30 hover:border-yellow-500/50 flex items-center justify-center gap-2"
-                  title="MVP Demo: Set location to FCSIT UPM, Serdang"
-                >
-                  <span className="material-symbols-outlined text-lg">science</span>
-                  Use Test Location
+                <button onClick={useTestLocation}
+                        className="flex-1 inline-flex items-center justify-center gap-2 h-12 rounded-full font-mono-jb text-[11px] uppercase tracking-[0.25em] border transition-all hover:bg-white/5"
+                        style={{ borderColor: 'rgba(241,234,216,.2)', color: 'var(--rf-bone)' }}
+                        title="MVP Demo: Set location to FCSIT UPM, Serdang">
+                  <span className="material-symbols-outlined text-base">science</span>
+                  Test location
                 </button>
               )}
             </div>
 
             {location && (
-              <div className="mt-4 p-3 bg-[#112214] rounded-lg border border-[#13ec37]/20">
-                <p className="text-xs text-[#92c99b] mb-1">
-                  <span className="font-semibold text-white">Saved coordinates:</span>
-                </p>
-                <p className="text-sm text-[#13ec37] font-mono mb-2">
-                  {location.latitude.toFixed(5)}, {location.longitude.toFixed(5)}
-                </p>
-                {location.address && (
-                  <p className="text-xs text-[#92c99b]">
-                    <span className="font-semibold text-white">Address:</span> {location.address}
+              <div className="mt-5 p-4 rounded-xl border flex items-start gap-3"
+                   style={{ borderColor: 'rgba(200,255,77,.25)', background: 'rgba(200,255,77,.05)' }}>
+                <span className="material-symbols-outlined mt-0.5" style={{ color: 'var(--rf-sap)' }}>check_circle</span>
+                <div className="flex-1">
+                  <p className="rf-eyebrow mb-1">Saved coordinates</p>
+                  <p className="font-mono-jb text-sm" style={{ color: 'var(--rf-sap)' }}>
+                    {location.latitude.toFixed(5)}, {location.longitude.toFixed(5)}
                   </p>
-                )}
+                  {location.address && (
+                    <p className="font-instrument italic text-base mt-1" style={{ color: 'var(--rf-bone)' }}>
+                      {location.address}
+                    </p>
+                  )}
+                </div>
               </div>
             )}
-          </div>
+          </section>
 
-          <div>
-            <label className="block text-sm font-medium text-[#92c99b] mb-2">
-              Address (fallback)
-            </label>
-            <input
-              value={manualAddress}
-              onChange={(e) => setManualAddress(e.target.value)}
-              className="w-full px-4 py-3 rounded-lg bg-[#102213] border border-[#234829] text-white placeholder:text-[#92c99b]/50 focus:ring-2 focus:ring-[#13ec37] focus:border-[#13ec37] transition-all"
-              placeholder="Enter your address if you can't use GPS"
-            />
-            <p className="text-xs text-[#92c99b]/70 mt-2 flex items-start gap-1">
-              <span className="material-symbols-outlined text-xs">info</span>
-              For this prototype, address-only won't power distance filtering unless GPS is enabled.
-            </p>
-          </div>
-
-          {role === 'farmer' && (
-            <div className="p-6 rounded-xl border border-[#234829] bg-[#234829]/30">
-              <label className="block text-sm font-medium text-[#92c99b] mb-3">
-                Search radius: <span className="text-[#13ec37] font-bold">{radiusKm} km</span>
-              </label>
-              <input
-                type="range"
-                min={1}
-                max={50}
-                step={1}
-                value={radiusKm}
-                onChange={(e) => setRadiusKm(parseInt(e.target.value, 10))}
-                className="w-full accent-[#13ec37]"
-              />
-              <div className="flex justify-between text-xs text-[#92c99b] mt-2">
-                <span>1km</span>
-                <span>50km</span>
-              </div>
+          {/* Manual address fallback */}
+          <section>
+            <div className="flex items-baseline justify-between mb-2">
+              <label className="rf-eyebrow">02 · Address — fallback</label>
+              <span className="font-mono-jb text-[9px] uppercase tracking-[0.3em] opacity-50">optional</span>
             </div>
+            <input value={manualAddress} onChange={(e) => setManualAddress(e.target.value)}
+                   className="rf-input w-full h-12 px-4"
+                   placeholder="Enter your address if you can't use GPS…" />
+            <p className="font-instrument italic text-sm mt-3" style={{ color: 'rgba(241,234,216,.5)' }}>
+              In this edition, address-only won&apos;t power distance filtering — GPS is the proper plot.
+            </p>
+          </section>
+
+          {/* Radius (farmer only) */}
+          {role === 'farmer' && (
+            <section className="rounded-2xl p-6 border"
+                     style={{ borderColor: 'rgba(241,234,216,.14)', background: 'rgba(241,234,216,.025)' }}>
+              <div className="flex items-baseline justify-between mb-4">
+                <label className="rf-eyebrow">03 · The orbit</label>
+                <span className="font-fraunces fraunces-wonk italic text-3xl font-light leading-none"
+                      style={{ color: 'var(--rf-sap)' }}>
+                  {radiusKm}<span className="font-mono-jb text-xs ml-1 not-italic opacity-70">km</span>
+                </span>
+              </div>
+              <div className="relative h-1.5 rounded-full" style={{ background: 'rgba(241,234,216,.1)' }}>
+                <div className="absolute left-0 top-0 h-full rounded-full transition-all"
+                     style={{ width: `${((radiusKm - 1) / 49) * 100}%`, background: 'var(--rf-sap)' }} />
+                <input type="range" min={1} max={50} step={1} value={radiusKm}
+                       onChange={(e) => setRadiusKm(parseInt(e.target.value, 10))}
+                       className="absolute inset-0 w-full h-full opacity-0 cursor-pointer" />
+                <div className="absolute top-1/2 -translate-y-1/2 size-4 rounded-full border-2 pointer-events-none"
+                     style={{ left: `calc(${((radiusKm - 1) / 49) * 100}% - 8px)`, background: 'var(--rf-sap)', borderColor: 'var(--rf-forest)' }} />
+              </div>
+              <div className="flex justify-between mt-2 font-mono-jb text-[9px] uppercase tracking-[0.2em] opacity-50">
+                <span>1km</span><span>50km</span>
+              </div>
+            </section>
           )}
 
-          <div className="flex justify-end gap-3 pt-4">
-            <button
-              onClick={() => router.push('/onboarding/role')}
-              className="px-6 py-3 rounded-lg bg-[#234829] hover:bg-[#234829]/80 text-[#92c99b] hover:text-white font-semibold transition-colors border border-[#234829]"
-            >
-              Back
+          {/* Actions */}
+          <div className="flex flex-wrap justify-end gap-3 pt-4">
+            <button onClick={() => router.push('/onboarding/role')}
+                    className="inline-flex items-center justify-center h-14 px-6 rounded-full font-mono-jb text-[11px] uppercase tracking-[0.25em] border transition-all hover:bg-white/5"
+                    style={{ borderColor: 'rgba(241,234,216,.2)', color: 'var(--rf-bone)' }}>
+              ← Back
             </button>
-            <button
-              onClick={save}
-              disabled={!canSave || saving}
-              className="px-6 py-3 rounded-lg bg-[#13ec37] hover:bg-[#11d632] text-[#112214] font-bold disabled:opacity-50 transition-all shadow-[0_0_15px_rgba(19,236,55,0.3)] flex items-center gap-2"
-            >
-              {saving ? (
-                <>
-                  <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-[#112214]"></div>
-                  <span>Saving…</span>
-                </>
-              ) : (
-                <>
-                  <span>Continue</span>
-                  <span className="material-symbols-outlined text-lg">arrow_forward</span>
-                </>
-              )}
+            <button onClick={save} disabled={!canSave || saving}
+                    className="group inline-flex items-center justify-between gap-4 pl-7 pr-2 h-14 rounded-full font-mono-jb text-[12px] uppercase tracking-[0.25em] transition-all hover:-translate-y-0.5 disabled:opacity-50 disabled:cursor-not-allowed rf-glow-sap"
+                    style={{ background: 'var(--rf-sap)', color: 'var(--rf-forest)' }}>
+              <span>{saving ? 'Planting your pin…' : 'Continue →'}</span>
+              <span className="flex items-center justify-center size-11 rounded-full transition-transform group-hover:rotate-45"
+                    style={{ background: 'var(--rf-forest)', color: 'var(--rf-sap)' }}>
+                {saving ? (
+                  <span className="size-4 border-2 border-current border-t-transparent rounded-full animate-spin" />
+                ) : (
+                  <svg viewBox="0 0 24 24" className="size-4" fill="none" stroke="currentColor" strokeWidth="2">
+                    <path d="M7 17L17 7M9 7h8v8" strokeLinecap="round" strokeLinejoin="round" />
+                  </svg>
+                )}
+              </span>
             </button>
           </div>
         </div>
@@ -310,5 +274,3 @@ export default function LocationOnboardingPage() {
     </div>
   );
 }
-
-

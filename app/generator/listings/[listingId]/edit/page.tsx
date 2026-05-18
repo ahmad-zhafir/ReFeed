@@ -6,8 +6,7 @@ import { getFirestoreDb, getFirebaseStorage, onAuthStateChange } from '@/lib/fir
 import { doc, getDoc, updateDoc } from 'firebase/firestore';
 import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
 import { User } from 'firebase/auth';
-import { UserProfile, MarketplaceListing, MarketplacePickupWindow } from '@/lib/types';
-import { getUserProfile } from '@/lib/userProfile';
+import { MarketplaceListing, MarketplacePickupWindow } from '@/lib/types';
 import { getListingsCollectionPath } from '@/lib/constants';
 import RoleGuard from '@/components/RoleGuard';
 import Link from 'next/link';
@@ -37,7 +36,6 @@ function EditListingContent() {
   const params = useParams();
   const listingId = params.listingId as string;
   const [user, setUser] = useState<User | null>(null);
-  const [userProfile, setUserProfile] = useState<UserProfile | null>(null);
   const [loading, setLoading] = useState(true);
   const [step, setStep] = useState(1);
   const [submitting, setSubmitting] = useState(false);
@@ -80,8 +78,6 @@ function EditListingContent() {
     const unsubscribe = onAuthStateChange(async (currentUser) => {
       if (currentUser) {
         setUser(currentUser);
-        const profile = await getUserProfile(currentUser.uid);
-        setUserProfile(profile);
         await loadListing(currentUser.uid);
       } else {
         router.push('/login');
@@ -437,10 +433,10 @@ function EditListingContent() {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-[#102213] flex items-center justify-center">
+      <div className="min-h-screen bg-[var(--rf-forest)] flex items-center justify-center">
         <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-[#13ec37] mx-auto mb-4"></div>
-          <p className="text-white">Loading...</p>
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-[var(--rf-sap)] mx-auto mb-4"></div>
+          <p className="text-[var(--rf-bone)]">Loading...</p>
         </div>
       </div>
     );
@@ -449,67 +445,88 @@ function EditListingContent() {
   // Continue with the rest of the component - copying the structure from new listing page
   // but with edit-specific changes...
   return (
-    <div className="font-display bg-[#f6f8f6] dark:bg-[#102213] text-slate-900 dark:text-white antialiased min-h-screen flex flex-col">
+    <div className="font-fraunces antialiased min-h-screen flex flex-col relative" style={{ background: 'var(--rf-forest)', color: 'var(--rf-bone)' }}>
+      <div className="pointer-events-none fixed inset-0 rf-dotgrid opacity-40" />
       {/* Header */}
-      <header className="sticky top-0 z-50 w-full border-b border-solid border-gray-200 dark:border-[#234829] bg-white/80 dark:bg-[#102213]/80 backdrop-blur-md">
+      <header className="sticky top-0 z-50 w-full backdrop-blur-xl border-b" style={{ background: 'rgba(13,26,16,.85)', borderColor: 'rgba(241,234,216,.10)' }}>
         <div className="px-6 md:px-10 py-3 flex items-center justify-between w-full">
-          <Link href="/generator" className="flex items-center gap-4 text-slate-900 dark:text-white cursor-pointer">
-            <div className="size-8 text-[#13ec37]">
-              <svg fill="none" viewBox="0 0 48 48" xmlns="http://www.w3.org/2000/svg">
-                <path d="M42.4379 44C42.4379 44 36.0744 33.9038 41.1692 24C46.8624 12.9336 42.2078 4 42.2078 4L7.01134 4C7.01134 4 11.6577 12.932 5.96912 23.9969C0.876273 33.9029 7.27094 44 7.27094 44L42.4379 44Z" fill="currentColor"></path>
-              </svg>
+          <Link href="/generator/listings" className="flex items-center gap-3 cursor-pointer">
+            <div className="relative size-9">
+              <div className="absolute inset-0 rounded-full border border-dashed" style={{ borderColor: 'var(--rf-sap)' }} />
+              <div className="absolute inset-1 rounded-full flex items-center justify-center" style={{ background: 'var(--rf-sap)', color: 'var(--rf-forest)' }}>
+                <svg viewBox="0 0 48 48" className="size-4" fill="currentColor">
+                  <path d="M42.4 44s-6.4-10.1-1.3-20C46.9 12.9 42.2 4 42.2 4H7s4.7 8.9-1 20C.9 33.9 7.3 44 7.3 44h35.1z" />
+                </svg>
+              </div>
             </div>
-            <h2 className="text-xl font-bold leading-tight tracking-[-0.015em]">ReFeed</h2>
+            <div className="flex flex-col leading-none">
+              <h2 className="font-fraunces fraunces-wonk text-xl font-black tracking-[-0.03em]">
+                Re<span className="italic font-light" style={{ color: 'var(--rf-sap)' }}>Feed</span>
+              </h2>
+              <span className="font-mono-jb text-[8px] uppercase tracking-[0.32em] mt-0.5 opacity-60">Kitchen · Ledger</span>
+            </div>
           </Link>
         </div>
       </header>
 
-      {/* Main Content - Same structure as new listing page */}
-      <main className="flex-1 w-full max-w-[1280px] mx-auto px-4 md:px-10 py-8">
+      {/* Main Content */}
+      <main className="relative flex-1 w-full max-w-[1280px] mx-auto px-4 md:px-10 py-10">
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 lg:gap-12">
           <div className="lg:col-span-8 flex flex-col gap-6">
-            <div className="flex flex-col gap-2">
-              <div className="flex items-center gap-2 text-[#92c99b] text-sm font-medium">
-                <span className="material-symbols-outlined text-lg">arrow_back</span>
-                <Link href={`/generator/listings/${listingId}`} className="hover:underline">Back to Listing</Link>
+            <div className="flex flex-col gap-4">
+              <Link href={`/generator/listings/${listingId}`}
+                    className="inline-flex items-center gap-2 font-mono-jb text-[11px] uppercase tracking-[0.25em] opacity-70 hover:opacity-100 hover:text-[color:var(--rf-sap)] w-fit">
+                <span aria-hidden>←</span> Back to entry
+              </Link>
+              <div className="rf-eyebrow flex items-center gap-3">
+                <span className="size-2 rounded-full" style={{ background: 'var(--rf-sap)' }} />
+                Amending the entry
               </div>
-              <h1 className="text-slate-900 dark:text-white tracking-tight text-3xl md:text-[32px] font-bold leading-tight">Edit Waste Listing</h1>
-              <p className="text-slate-500 dark:text-[#92c99b] text-base">Update your listing details. Changes will be reflected immediately.</p>
+              <h1 className="rf-headline text-[clamp(2.5rem,6vw,4.5rem)]">
+                Revise the <span className="italic">listing.</span>
+              </h1>
+              <p className="font-instrument italic text-xl max-w-xl" style={{ color: 'rgba(241,234,216,.7)' }}>
+                Changes are written into the ledger immediately.
+              </p>
             </div>
 
             {/* Progress Bar */}
             <div className="flex flex-col gap-3 py-2">
-              <div className="flex gap-6 justify-between items-end">
-                <p className="text-slate-900 dark:text-white text-base font-medium leading-normal">
-                  Step {step} of 4: {currentStepName}
+              <div className="flex gap-6 justify-between items-baseline">
+                <p className="font-mono-jb text-[11px] uppercase tracking-[0.25em]">
+                  <span className="opacity-60 mr-2">Step {step} / 4</span>
+                  <span style={{ color: 'var(--rf-sap)' }}>{currentStepName}</span>
                 </p>
-                <span className="text-slate-500 dark:text-[#92c99b] text-sm">{Math.round(progressPercentage)}% Completed</span>
+                <span className="font-fraunces fraunces-wonk italic text-2xl font-light leading-none" style={{ color: 'var(--rf-sap)' }}>
+                  {Math.round(progressPercentage)}<span className="font-mono-jb text-[10px] not-italic opacity-70">%</span>
+                </span>
               </div>
-              <div className="rounded-full bg-gray-200 dark:bg-[#32673b] h-2 w-full overflow-hidden">
-                <div className="h-full bg-[#13ec37] rounded-full transition-all duration-500" style={{ width: `${progressPercentage}%` }}></div>
+              <div className="rounded-full h-1.5 w-full overflow-hidden" style={{ background: 'rgba(241,234,216,.1)' }}>
+                <div className="h-full rounded-full transition-all duration-500" style={{ width: `${progressPercentage}%`, background: 'var(--rf-sap)' }}></div>
               </div>
             </div>
 
-            {/* Form Card - Reuse structure from new listing page but pre-filled */}
-            <div className="bg-white dark:bg-[#1c2e20] border border-gray-200 dark:border-[#234829] rounded-xl p-6 md:p-8 shadow-sm flex flex-col gap-8">
+            {/* Form Card */}
+            <div className="rounded-2xl p-6 md:p-8 flex flex-col gap-8 border"
+                 style={{ borderColor: 'rgba(241,234,216,.14)', background: 'rgba(241,234,216,.025)' }}>
               {/* Step 1: Category - Same as new listing */}
               {step === 1 && (
                 <div className="flex flex-col gap-6">
                   <div>
-                    <label className="text-slate-900 dark:text-white text-base font-medium leading-normal mb-2 block">
+                    <label className="text-[var(--rf-bone)] text-base font-medium leading-normal mb-2 block">
                       Waste Category <span className="text-red-500">*</span>
                     </label>
                     <select
                       value={category}
                       onChange={(e) => setCategory(e.target.value)}
-                      className="w-full appearance-none rounded-lg bg-gray-50 dark:bg-[#102213] border border-gray-300 dark:border-[#234829] text-slate-900 dark:text-white h-14 px-4 pr-10 focus:outline-none focus:ring-2 focus:ring-[#13ec37] focus:border-transparent transition-all"
+                      className="w-full appearance-none rounded-lg bg-[var(--rf-forest)] border border-[rgba(241,234,216,0.18)] text-[var(--rf-bone)] h-14 px-4 pr-10 focus:outline-none focus:ring-2 focus:ring-[var(--rf-sap)] focus:border-transparent transition-all"
                     >
                       <option value="">Select category</option>
                       {WASTE_CATEGORIES.map((cat) => (
                         <option key={cat} value={cat}>{cat}</option>
                       ))}
                     </select>
-                    <p className="text-xs text-slate-500 dark:text-[#92c99b] pl-1 mt-1">Choose the primary composition of the waste.</p>
+                    <p className="text-xs text-[var(--rf-bone)]/60 pl-1 mt-1">Choose the primary composition of the waste.</p>
                   </div>
                 </div>
               )}
@@ -518,8 +535,8 @@ function EditListingContent() {
               {step === 2 && (
                 <div className="flex flex-col gap-4">
                   <div className="flex justify-between items-center">
-                    <label className="text-slate-900 dark:text-white text-base font-medium leading-normal">Photo Verification</label>
-                    <span className="text-xs bg-[#13ec37]/20 text-[#13ec37] px-2 py-1 rounded font-medium">Required</span>
+                    <label className="text-[var(--rf-bone)] text-base font-medium leading-normal">Photo Verification</label>
+                    <span className="text-xs bg-[var(--rf-sap)]/20 text-[var(--rf-sap)] px-2 py-1 rounded font-medium">Required</span>
                   </div>
                   <input
                     ref={fileInputRef}
@@ -529,7 +546,7 @@ function EditListingContent() {
                     onChange={handleImageChange}
                   />
                   {imagePreview ? (
-                    <div className="relative border-2 border-dashed border-[#13ec37] rounded-xl bg-gray-50 dark:bg-[#102213] p-4">
+                    <div className="relative border-2 border-dashed border-[var(--rf-sap)] rounded-xl bg-[var(--rf-forest)] p-4">
                       <img src={imagePreview} alt="Preview" className="w-full h-64 object-cover rounded-lg" />
                       <button
                         type="button"
@@ -542,7 +559,7 @@ function EditListingContent() {
                             fileInputRef.current.value = '';
                           }
                         }}
-                        className="absolute top-6 right-6 bg-red-500/90 hover:bg-red-600 text-white px-4 py-2 rounded-lg font-medium transition-colors"
+                        className="absolute top-6 right-6 bg-red-500/90 hover:bg-red-600 text-[var(--rf-bone)] px-4 py-2 rounded-lg font-medium transition-colors"
                       >
                         Change
                       </button>
@@ -554,13 +571,13 @@ function EditListingContent() {
                         e.stopPropagation();
                         fileInputRef.current?.click();
                       }}
-                      className="relative border-2 border-dashed border-gray-300 dark:border-[#32673b] hover:border-[#13ec37] dark:hover:border-[#13ec37] rounded-xl bg-gray-50 dark:bg-[#102213] p-8 flex flex-col items-center justify-center text-center transition-colors cursor-pointer group"
+                      className="relative border-2 border-dashed border-[rgba(241,234,216,0.18)] hover:border-[var(--rf-sap)] dark:hover:border-[var(--rf-sap)] rounded-xl bg-[var(--rf-forest)] p-8 flex flex-col items-center justify-center text-center transition-colors cursor-pointer group"
                     >
-                      <div className="size-16 rounded-full bg-[#13ec37]/10 flex items-center justify-center mb-4 group-hover:scale-110 transition-transform">
-                        <span className="material-symbols-outlined text-[#13ec37] text-3xl">add_a_photo</span>
+                      <div className="size-16 rounded-full bg-[var(--rf-sap)]/10 flex items-center justify-center mb-4 group-hover:scale-110 transition-transform">
+                        <span className="material-symbols-outlined text-[var(--rf-sap)] text-3xl">add_a_photo</span>
                       </div>
-                      <h3 className="text-slate-900 dark:text-white font-medium text-lg mb-1">Click to upload or drag and drop</h3>
-                      <p className="text-slate-500 dark:text-[#92c99b] text-sm max-w-xs">SVG, PNG, JPG or GIF (max. 800x400px). Ensure contents are clearly visible.</p>
+                      <h3 className="text-[var(--rf-bone)] font-medium text-lg mb-1">Click to upload or drag and drop</h3>
+                      <p className="text-[var(--rf-bone)]/60 text-sm max-w-xs">SVG, PNG, JPG or GIF (max. 800x400px). Ensure contents are clearly visible.</p>
                     </div>
                   )}
                 </div>
@@ -571,51 +588,51 @@ function EditListingContent() {
                 <>
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                     <div className="flex flex-col gap-2">
-                      <label className="text-slate-900 dark:text-white text-base font-medium leading-normal">
+                      <label className="text-[var(--rf-bone)] text-base font-medium leading-normal">
                         Listing Title <span className="text-red-500">*</span>
                       </label>
                       <input
                         type="text"
                         value={title}
                         onChange={(e) => setTitle(e.target.value)}
-                        className="w-full rounded-lg bg-gray-50 dark:bg-[#234829] border border-gray-300 dark:border-[#234829] text-slate-900 dark:text-white h-12 px-4 focus:outline-none focus:ring-2 focus:ring-[#13ec37] focus:border-transparent transition-all placeholder:text-slate-400 dark:placeholder:text-[#92c99b]/50"
+                        className="w-full rounded-lg bg-[var(--rf-forest)] border border-[rgba(241,234,216,0.18)] text-[var(--rf-bone)] h-12 px-4 focus:outline-none focus:ring-2 focus:ring-[var(--rf-sap)] focus:border-transparent transition-all placeholder:text-[var(--rf-bone)]/50 dark:placeholder:text-[var(--rf-bone-muted)]/50"
                         placeholder="e.g., Fresh Coffee Grounds"
                       />
                     </div>
 
                     <div className="flex flex-col gap-2">
-                      <label className="text-slate-900 dark:text-white text-base font-medium leading-normal">
+                      <label className="text-[var(--rf-bone)] text-base font-medium leading-normal">
                         Category
                       </label>
                       <input
                         type="text"
                         value={category}
                         readOnly
-                        className="w-full rounded-lg bg-gray-100 dark:bg-[#112214] border border-gray-300 dark:border-[#234829] text-slate-600 dark:text-[#92c99b] h-12 px-4 cursor-not-allowed"
+                        className="w-full rounded-lg bg-[var(--rf-forest)] border border-[rgba(241,234,216,0.18)] text-[var(--rf-bone)] h-12 px-4 cursor-not-allowed"
                       />
                     </div>
                   </div>
 
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                     <div className="flex flex-col gap-2">
-                      <label className="text-slate-900 dark:text-white text-base font-medium leading-normal">Weight (kg)</label>
+                      <label className="text-[var(--rf-bone)] text-base font-medium leading-normal">Weight (kg)</label>
                       <div className="relative">
                         <input
                           type="number"
                           step="0.1"
                           value={weightKg}
                           onChange={(e) => setWeightKg(e.target.value)}
-                          className="w-full rounded-lg bg-gray-50 dark:bg-[#234829] border border-gray-300 dark:border-[#234829] text-slate-900 dark:text-white h-12 px-4 pr-12 focus:outline-none focus:ring-2 focus:ring-[#13ec37] focus:border-transparent transition-all placeholder:text-slate-400 dark:placeholder:text-[#92c99b]/50"
+                          className="w-full rounded-lg bg-[var(--rf-forest)] border border-[rgba(241,234,216,0.18)] text-[var(--rf-bone)] h-12 px-4 pr-12 focus:outline-none focus:ring-2 focus:ring-[var(--rf-sap)] focus:border-transparent transition-all placeholder:text-[var(--rf-bone)]/50 dark:placeholder:text-[var(--rf-bone-muted)]/50"
                           placeholder="0.00"
                         />
                         <div className="absolute inset-y-0 right-0 flex items-center px-4 pointer-events-none">
-                          <span className="text-slate-500 dark:text-[#92c99b] font-medium">kg</span>
+                          <span className="text-[var(--rf-bone)]/60 font-medium">kg</span>
                         </div>
                       </div>
                     </div>
 
                     <div className="flex flex-col gap-2">
-                      <label className="text-slate-900 dark:text-white text-base font-medium leading-normal">
+                      <label className="text-[var(--rf-bone)] text-base font-medium leading-normal">
                         Price ({currency}) <span className="text-red-500">*</span>
                       </label>
                       <div className="relative">
@@ -624,14 +641,14 @@ function EditListingContent() {
                           step="0.01"
                           value={price}
                           onChange={(e) => setPrice(e.target.value)}
-                          className="w-full rounded-lg bg-gray-50 dark:bg-[#234829] border border-gray-300 dark:border-[#234829] text-slate-900 dark:text-white h-12 px-4 pr-16 focus:outline-none focus:ring-2 focus:ring-[#13ec37] focus:border-transparent transition-all placeholder:text-slate-400 dark:placeholder:text-[#92c99b]/50"
+                          className="w-full rounded-lg bg-[var(--rf-forest)] border border-[rgba(241,234,216,0.18)] text-[var(--rf-bone)] h-12 px-4 pr-16 focus:outline-none focus:ring-2 focus:ring-[var(--rf-sap)] focus:border-transparent transition-all placeholder:text-[var(--rf-bone)]/50 dark:placeholder:text-[var(--rf-bone-muted)]/50"
                           placeholder="0.00"
                         />
                         <div className="absolute inset-y-0 right-0 flex items-center px-4 pointer-events-none">
                           <select
                             value={currency}
                             onChange={(e) => setCurrency(e.target.value)}
-                            className="bg-transparent border-none text-slate-900 dark:text-white font-medium focus:outline-none cursor-pointer"
+                            className="bg-transparent border-none text-[var(--rf-bone)] font-medium focus:outline-none cursor-pointer"
                           >
                             <option value="MYR">MYR</option>
                             <option value="USD">USD</option>
@@ -643,7 +660,7 @@ function EditListingContent() {
                   </div>
 
                   <div className="flex flex-col gap-2">
-                    <label className="text-slate-900 dark:text-white text-base font-medium leading-normal">Pickup Address <span className="text-red-500">*</span></label>
+                    <label className="text-[var(--rf-bone)] text-base font-medium leading-normal">Pickup Address <span className="text-red-500">*</span></label>
                     <div className="flex gap-2">
                       <input
                         ref={addressInputRef}
@@ -655,32 +672,32 @@ function EditListingContent() {
                             geocodeAddress(address);
                           }
                         }}
-                        className="flex-1 rounded-lg bg-gray-50 dark:bg-[#234829] border border-gray-300 dark:border-[#234829] text-slate-900 dark:text-white h-12 px-4 focus:outline-none focus:ring-2 focus:ring-[#13ec37] focus:border-transparent transition-all placeholder:text-slate-400 dark:placeholder:text-[#92c99b]/50"
+                        className="flex-1 rounded-lg bg-[var(--rf-forest)] border border-[rgba(241,234,216,0.18)] text-[var(--rf-bone)] h-12 px-4 focus:outline-none focus:ring-2 focus:ring-[var(--rf-sap)] focus:border-transparent transition-all placeholder:text-[var(--rf-bone)]/50 dark:placeholder:text-[var(--rf-bone-muted)]/50"
                         placeholder="Enter address"
                       />
                       <button
                         type="button"
                         onClick={useCurrentLocation}
-                        className="px-4 py-2 bg-[#234829] hover:bg-[#32673b] text-white rounded-lg transition-colors flex items-center gap-2"
+                        className="px-4 py-2 bg-[var(--rf-moss)] hover:bg-[var(--rf-moss)] text-[var(--rf-bone)] rounded-lg transition-colors flex items-center gap-2"
                       >
                         <span className="material-symbols-outlined">my_location</span>
                         GPS
                       </button>
                     </div>
                     {latitude && longitude && (
-                      <p className="text-xs text-slate-500 dark:text-[#92c99b]">
+                      <p className="text-xs text-[var(--rf-bone)]/60">
                         Coordinates: {latitude.toFixed(6)}, {longitude.toFixed(6)}
                       </p>
                     )}
                   </div>
 
                   <div className="flex flex-col gap-2">
-                    <label className="text-slate-900 dark:text-white text-base font-medium leading-normal">Notes</label>
+                    <label className="text-[var(--rf-bone)] text-base font-medium leading-normal">Notes</label>
                     <textarea
                       value={notes}
                       onChange={(e) => setNotes(e.target.value)}
                       rows={4}
-                      className="w-full rounded-lg bg-gray-50 dark:bg-[#234829] border border-gray-300 dark:border-[#234829] text-slate-900 dark:text-white px-4 py-3 focus:outline-none focus:ring-2 focus:ring-[#13ec37] focus:border-transparent transition-all placeholder:text-slate-400 dark:placeholder:text-[#92c99b]/50 resize-none"
+                      className="w-full rounded-lg bg-[var(--rf-forest)] border border-[rgba(241,234,216,0.18)] text-[var(--rf-bone)] px-4 py-3 focus:outline-none focus:ring-2 focus:ring-[var(--rf-sap)] focus:border-transparent transition-all placeholder:text-[var(--rf-bone)]/50 dark:placeholder:text-[var(--rf-bone-muted)]/50 resize-none"
                       placeholder="Additional information about the waste..."
                     />
                   </div>
@@ -691,7 +708,7 @@ function EditListingContent() {
               {step === 4 && (
                 <div className="flex flex-col gap-6">
                   <div className="flex flex-col gap-4">
-                    <label className="text-slate-900 dark:text-white text-base font-medium leading-normal">
+                    <label className="text-[var(--rf-bone)] text-base font-medium leading-normal">
                       Schedule Type
                     </label>
                     <div className="grid grid-cols-2 gap-4">
@@ -700,24 +717,24 @@ function EditListingContent() {
                         onClick={() => setScheduleType('one-time')}
                         className={`p-4 rounded-lg border-2 transition-all ${
                           scheduleType === 'one-time'
-                            ? 'border-[#13ec37] bg-[#13ec37]/10 dark:bg-[#13ec37]/20'
-                            : 'border-gray-300 dark:border-[#234829] hover:border-[#13ec37]/50'
+                            ? 'border-[var(--rf-sap)] bg-[var(--rf-sap)]/10'
+                            : 'border-[rgba(241,234,216,0.18)] hover:border-[var(--rf-sap)]/50'
                         }`}
                       >
                         <span className="material-symbols-outlined text-2xl mb-2 block">event</span>
-                        <p className="font-semibold text-slate-900 dark:text-white">One-Time</p>
+                        <p className="font-semibold text-[var(--rf-bone)]">One-Time</p>
                       </button>
                       <button
                         type="button"
                         onClick={() => setScheduleType('recurring')}
                         className={`p-4 rounded-lg border-2 transition-all ${
                           scheduleType === 'recurring'
-                            ? 'border-[#13ec37] bg-[#13ec37]/10 dark:bg-[#13ec37]/20'
-                            : 'border-gray-300 dark:border-[#234829] hover:border-[#13ec37]/50'
+                            ? 'border-[var(--rf-sap)] bg-[var(--rf-sap)]/10'
+                            : 'border-[rgba(241,234,216,0.18)] hover:border-[var(--rf-sap)]/50'
                         }`}
                       >
                         <span className="material-symbols-outlined text-2xl mb-2 block">repeat</span>
-                        <p className="font-semibold text-slate-900 dark:text-white">Recurring</p>
+                        <p className="font-semibold text-[var(--rf-bone)]">Recurring</p>
                       </button>
                     </div>
                   </div>
@@ -725,23 +742,23 @@ function EditListingContent() {
                   {scheduleType === 'one-time' ? (
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                       <div className="flex flex-col gap-2">
-                        <label className="text-slate-900 dark:text-white text-sm font-medium">Start Date & Time</label>
+                        <label className="text-[var(--rf-bone)] text-sm font-medium">Start Date & Time</label>
                         <input
                           type="datetime-local"
                           value={newWindowStart}
                           onChange={(e) => setNewWindowStart(e.target.value)}
                           min={getMinDateTime()}
-                          className="w-full rounded-lg bg-gray-50 dark:bg-[#234829] border border-gray-300 dark:border-[#234829] text-slate-900 dark:text-white h-12 px-4 focus:outline-none focus:ring-2 focus:ring-[#13ec37] focus:border-transparent transition-all"
+                          className="w-full rounded-lg bg-[var(--rf-forest)] border border-[rgba(241,234,216,0.18)] text-[var(--rf-bone)] h-12 px-4 focus:outline-none focus:ring-2 focus:ring-[var(--rf-sap)] focus:border-transparent transition-all"
                         />
                       </div>
                       <div className="flex flex-col gap-2">
-                        <label className="text-slate-900 dark:text-white text-sm font-medium">End Date & Time</label>
+                        <label className="text-[var(--rf-bone)] text-sm font-medium">End Date & Time</label>
                         <input
                           type="datetime-local"
                           value={newWindowEnd}
                           onChange={(e) => setNewWindowEnd(e.target.value)}
                           min={newWindowStart || getMinDateTime()}
-                          className="w-full rounded-lg bg-gray-50 dark:bg-[#234829] border border-gray-300 dark:border-[#234829] text-slate-900 dark:text-white h-12 px-4 focus:outline-none focus:ring-2 focus:ring-[#13ec37] focus:border-transparent transition-all"
+                          className="w-full rounded-lg bg-[var(--rf-forest)] border border-[rgba(241,234,216,0.18)] text-[var(--rf-bone)] h-12 px-4 focus:outline-none focus:ring-2 focus:ring-[var(--rf-sap)] focus:border-transparent transition-all"
                         />
                       </div>
                     </div>
@@ -749,58 +766,58 @@ function EditListingContent() {
                     <div className="flex flex-col gap-4">
                       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                         <div className="flex flex-col gap-2">
-                          <label className="text-slate-900 dark:text-white text-sm font-medium">Start Date</label>
+                          <label className="text-[var(--rf-bone)] text-sm font-medium">Start Date</label>
                           <input
                             type="date"
                             value={recurringStartDate}
                             onChange={(e) => setRecurringStartDate(e.target.value)}
                             min={getMinDate()}
-                            className="w-full rounded-lg bg-gray-50 dark:bg-[#234829] border border-gray-300 dark:border-[#234829] text-slate-900 dark:text-white h-12 px-4 focus:outline-none focus:ring-2 focus:ring-[#13ec37] focus:border-transparent transition-all"
+                            className="w-full rounded-lg bg-[var(--rf-forest)] border border-[rgba(241,234,216,0.18)] text-[var(--rf-bone)] h-12 px-4 focus:outline-none focus:ring-2 focus:ring-[var(--rf-sap)] focus:border-transparent transition-all"
                           />
                         </div>
                         <div className="flex flex-col gap-2">
-                          <label className="text-slate-900 dark:text-white text-sm font-medium">End Date (Optional)</label>
+                          <label className="text-[var(--rf-bone)] text-sm font-medium">End Date (Optional)</label>
                           <input
                             type="date"
                             value={recurringEndDate}
                             onChange={(e) => setRecurringEndDate(e.target.value)}
                             min={recurringStartDate || getMinDate()}
-                            className="w-full rounded-lg bg-gray-50 dark:bg-[#234829] border border-gray-300 dark:border-[#234829] text-slate-900 dark:text-white h-12 px-4 focus:outline-none focus:ring-2 focus:ring-[#13ec37] focus:border-transparent transition-all"
+                            className="w-full rounded-lg bg-[var(--rf-forest)] border border-[rgba(241,234,216,0.18)] text-[var(--rf-bone)] h-12 px-4 focus:outline-none focus:ring-2 focus:ring-[var(--rf-sap)] focus:border-transparent transition-all"
                           />
                         </div>
                       </div>
                       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                         <div className="flex flex-col gap-2">
-                          <label className="text-slate-900 dark:text-white text-sm font-medium">Start Time</label>
+                          <label className="text-[var(--rf-bone)] text-sm font-medium">Start Time</label>
                           <input
                             type="time"
                             value={recurringStartTime}
                             onChange={(e) => setRecurringStartTime(e.target.value)}
-                            className="w-full rounded-lg bg-gray-50 dark:bg-[#234829] border border-gray-300 dark:border-[#234829] text-slate-900 dark:text-white h-12 px-4 focus:outline-none focus:ring-2 focus:ring-[#13ec37] focus:border-transparent transition-all"
+                            className="w-full rounded-lg bg-[var(--rf-forest)] border border-[rgba(241,234,216,0.18)] text-[var(--rf-bone)] h-12 px-4 focus:outline-none focus:ring-2 focus:ring-[var(--rf-sap)] focus:border-transparent transition-all"
                           />
                         </div>
                         <div className="flex flex-col gap-2">
-                          <label className="text-slate-900 dark:text-white text-sm font-medium">End Time</label>
+                          <label className="text-[var(--rf-bone)] text-sm font-medium">End Time</label>
                           <input
                             type="time"
                             value={recurringEndTime}
                             onChange={(e) => setRecurringEndTime(e.target.value)}
-                            className="w-full rounded-lg bg-gray-50 dark:bg-[#234829] border border-gray-300 dark:border-[#234829] text-slate-900 dark:text-white h-12 px-4 focus:outline-none focus:ring-2 focus:ring-[#13ec37] focus:border-transparent transition-all"
+                            className="w-full rounded-lg bg-[var(--rf-forest)] border border-[rgba(241,234,216,0.18)] text-[var(--rf-bone)] h-12 px-4 focus:outline-none focus:ring-2 focus:ring-[var(--rf-sap)] focus:border-transparent transition-all"
                           />
                         </div>
                       </div>
                       <div className="flex flex-col gap-2">
-                        <label className="text-slate-900 dark:text-white text-sm font-medium">Days of Week</label>
+                        <label className="text-[var(--rf-bone)] text-sm font-medium">Days of Week</label>
                         <div className="grid grid-cols-7 gap-2">
-                          {dayNames.map((day, index) => (
+                          {dayNames.map((_, index) => (
                             <button
                               key={index}
                               type="button"
                               onClick={() => toggleRecurringDay(index)}
                               className={`p-2 rounded-lg border-2 transition-all text-sm font-medium ${
                                 recurringDays.includes(index)
-                                  ? 'border-[#13ec37] bg-[#13ec37]/10 dark:bg-[#13ec37]/20 text-[#13ec37]'
-                                  : 'border-gray-300 dark:border-[#234829] text-slate-700 dark:text-[#92c99b] hover:border-[#13ec37]/50'
+                                  ? 'border-[var(--rf-sap)] bg-[var(--rf-sap)]/10 text-[var(--rf-sap)]'
+                                  : 'border-[rgba(241,234,216,0.18)] text-[var(--rf-bone)] hover:border-[var(--rf-sap)]/50'
                               }`}
                             >
                               {dayAbbr[index]}
@@ -813,7 +830,7 @@ function EditListingContent() {
 
                   <button
                     onClick={addPickupWindow}
-                    className="w-full py-3 bg-[#234829] hover:bg-[#32673b] text-white rounded-lg font-medium transition-colors flex items-center justify-center gap-2"
+                    className="w-full py-3 bg-[var(--rf-moss)] hover:bg-[var(--rf-moss)] text-[var(--rf-bone)] rounded-lg font-medium transition-colors flex items-center justify-center gap-2"
                   >
                     <span className="material-symbols-outlined">add</span>
                     Add Pickup Window
@@ -821,11 +838,11 @@ function EditListingContent() {
 
                   {pickupWindows.length > 0 && (
                     <div className="flex flex-col gap-2">
-                      <label className="text-slate-900 dark:text-white text-base font-medium leading-normal">Current Pickup Windows</label>
+                      <label className="text-[var(--rf-bone)] text-base font-medium leading-normal">Current Pickup Windows</label>
                       <div className="space-y-2 max-h-64 overflow-y-auto">
                         {pickupWindows.map((window, index) => (
-                          <div key={index} className="flex items-center justify-between p-3 bg-gray-50 dark:bg-[#234829] rounded-lg border border-gray-200 dark:border-[#234829]">
-                            <p className="text-slate-900 dark:text-white text-sm">
+                          <div key={index} className="flex items-center justify-between p-3 bg-[var(--rf-forest)] rounded-lg border border-[rgba(241,234,216,0.12)]">
+                            <p className="text-[var(--rf-bone)] text-sm">
                               {new Date(window.start).toLocaleString()} - {new Date(window.end).toLocaleString()}
                             </p>
                             <button
@@ -847,7 +864,7 @@ function EditListingContent() {
                 {step > 1 && (
                   <button
                     onClick={() => setStep(step - 1)}
-                    className="flex-1 sm:flex-none px-6 h-12 rounded-lg border border-gray-300 dark:border-[#234829] text-slate-700 dark:text-white font-medium hover:bg-gray-100 dark:hover:bg-white/5 transition-colors"
+                    className="flex-1 sm:flex-none px-6 h-12 rounded-lg border border-[rgba(241,234,216,0.18)] text-[var(--rf-bone)] font-medium hover:bg-[var(--rf-forest)] transition-colors"
                   >
                     Back
                   </button>
@@ -871,7 +888,7 @@ function EditListingContent() {
                       }
                       setStep(step + 1);
                     }}
-                    className="flex-1 h-12 rounded-lg bg-[#13ec37] hover:bg-[#11d632] text-[#112214] font-bold transition-colors flex items-center justify-center gap-2 shadow-[0_0_20px_rgba(19,236,55,0.3)]"
+                    className="flex-1 h-12 rounded-lg bg-[var(--rf-sap)] hover:bg-[var(--rf-sap-bright)] text-[var(--rf-ink)] font-bold transition-colors flex items-center justify-center gap-2 shadow-[0_0_20px_rgba(200,255,77,0.3)]"
                   >
                     Next
                     <span className="material-symbols-outlined text-lg">arrow_forward</span>
@@ -880,7 +897,7 @@ function EditListingContent() {
                   <button
                     onClick={handleSubmit}
                     disabled={submitting}
-                    className="flex-1 h-12 rounded-lg bg-[#13ec37] hover:bg-[#11d632] text-[#112214] font-bold transition-colors flex items-center justify-center gap-2 shadow-[0_0_20px_rgba(19,236,55,0.3)] disabled:opacity-50 disabled:cursor-not-allowed"
+                    className="flex-1 h-12 rounded-lg bg-[var(--rf-sap)] hover:bg-[var(--rf-sap-bright)] text-[var(--rf-ink)] font-bold transition-colors flex items-center justify-center gap-2 shadow-[0_0_20px_rgba(200,255,77,0.3)] disabled:opacity-50 disabled:cursor-not-allowed"
                   >
                     {submitting ? 'Updating...' : 'Update Listing'}
                     <span className="material-symbols-outlined text-lg">check</span>
@@ -892,51 +909,51 @@ function EditListingContent() {
 
           {/* Right Column: Safety Standards */}
           <div className="lg:col-span-4 flex flex-col gap-6">
-            <div className="bg-[#e8f5e9] dark:bg-[#152a19] border border-[#c8e6c9] dark:border-[#1e3f24] rounded-xl p-6 sticky top-24">
+            <div className="bg-[rgba(241,234,216,0.025)] border border-[rgba(241,234,216,0.14)] rounded-xl p-6 sticky top-24">
               <div className="flex items-center gap-3 mb-6">
-                <div className="bg-[#13ec37] text-black p-1.5 rounded-lg flex items-center justify-center">
+                <div className="bg-[var(--rf-sap)] text-black p-1.5 rounded-lg flex items-center justify-center">
                   <span className="material-symbols-outlined">shield</span>
                 </div>
-                <h3 className="text-slate-900 dark:text-white text-lg font-bold">Safety Standards</h3>
+                <h3 className="text-[var(--rf-bone)] text-lg font-bold">Safety Standards</h3>
               </div>
-              <p className="text-slate-700 dark:text-gray-300 text-sm mb-6 leading-relaxed">
+              <p className="text-[var(--rf-bone)]/60 text-sm mb-6 leading-relaxed">
                 To ensure high-quality compost for our partner farmers, please verify your waste meets these strict criteria before submitting.
               </p>
               <div className="space-y-4">
                 <div className="flex items-start gap-3">
-                  <div className="flex-shrink-0 mt-0.5 text-[#13ec37]">
+                  <div className="flex-shrink-0 mt-0.5 text-[var(--rf-sap)]">
                     <span className="material-symbols-outlined">check_circle</span>
                   </div>
                   <div>
-                    <p className="text-slate-900 dark:text-white font-medium text-sm">No Inorganic Material</p>
-                    <p className="text-slate-600 dark:text-[#92c99b] text-xs">Zero tolerance for plastic, glass, metal, or rubber bands.</p>
+                    <p className="text-[var(--rf-bone)] font-medium text-sm">No Inorganic Material</p>
+                    <p className="text-[var(--rf-bone)] text-xs">Zero tolerance for plastic, glass, metal, or rubber bands.</p>
                   </div>
                 </div>
                 <div className="flex items-start gap-3">
-                  <div className="flex-shrink-0 mt-0.5 text-[#13ec37]">
+                  <div className="flex-shrink-0 mt-0.5 text-[var(--rf-sap)]">
                     <span className="material-symbols-outlined">check_circle</span>
                   </div>
                   <div>
-                    <p className="text-slate-900 dark:text-white font-medium text-sm">Low Fat/Oil Content</p>
-                    <p className="text-slate-600 dark:text-[#92c99b] text-xs">Avoid large quantities of grease or fryer oil.</p>
+                    <p className="text-[var(--rf-bone)] font-medium text-sm">Low Fat/Oil Content</p>
+                    <p className="text-[var(--rf-bone)] text-xs">Avoid large quantities of grease or fryer oil.</p>
                   </div>
                 </div>
                 <div className="flex items-start gap-3">
-                  <div className="flex-shrink-0 mt-0.5 text-[#13ec37]">
+                  <div className="flex-shrink-0 mt-0.5 text-[var(--rf-sap)]">
                     <span className="material-symbols-outlined">check_circle</span>
                   </div>
                   <div>
-                    <p className="text-slate-900 dark:text-white font-medium text-sm">No Hazardous Waste</p>
-                    <p className="text-slate-600 dark:text-[#92c99b] text-xs">No cleaning chemicals, batteries, or medical waste.</p>
+                    <p className="text-[var(--rf-bone)] font-medium text-sm">No Hazardous Waste</p>
+                    <p className="text-[var(--rf-bone)] text-xs">No cleaning chemicals, batteries, or medical waste.</p>
                   </div>
                 </div>
               </div>
-              <div className="mt-8 p-4 bg-white/50 dark:bg-black/20 rounded-lg border border-[#13ec37]/10">
+              <div className="mt-8 p-4 bg-[var(--rf-forest)] rounded-lg border border-[var(--rf-sap)]/15">
                 <div className="flex items-center gap-2 mb-2">
-                  <span className="material-symbols-outlined text-[#13ec37] text-sm">lightbulb</span>
-                  <span className="text-xs font-bold uppercase tracking-wider text-[#13ec37]">Pro Tip</span>
+                  <span className="material-symbols-outlined text-[var(--rf-sap)] text-sm">lightbulb</span>
+                  <span className="text-xs font-bold uppercase tracking-wider text-[var(--rf-sap)]">Pro Tip</span>
                 </div>
-                <p className="text-slate-600 dark:text-[#92c99b] text-xs">
+                <p className="text-[var(--rf-bone)] text-xs">
                   Chopping larger vegetative scraps into smaller pieces speeds up the composting process and earns bonus points.
                 </p>
               </div>

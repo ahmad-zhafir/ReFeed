@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useRef } from 'react';
 import { useRouter, useParams } from 'next/navigation';
-import { getFirestoreDb, onAuthStateChange, signOut } from '@/lib/firebase';
+import { getFirestoreDb, onAuthStateChange } from '@/lib/firebase';
 import { doc, getDoc } from 'firebase/firestore';
 import { MarketplaceListing, UserProfile } from '@/lib/types';
 import { getUserProfile } from '@/lib/userProfile';
@@ -10,6 +10,7 @@ import { getListingsCollectionPath } from '@/lib/constants';
 import RoleGuard from '@/components/RoleGuard';
 import Link from 'next/link';
 import toast from 'react-hot-toast';
+import { FarmerHeader } from '@/components/FarmerHeader';
 
 function calculateDistance(lat1: number, lon1: number, lat2: number, lon2: number): number {
   const R = 6371;
@@ -44,23 +45,15 @@ function ListingDetailContent() {
   const dropdownRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
-    const handleClickOutside = (event: MouseEvent) => {
-      if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
-        setProfileDropdownOpen(false);
-      }
+    const handler = (e: MouseEvent) => {
+      if (dropdownRef.current && !dropdownRef.current.contains(e.target as Node)) setProfileDropdownOpen(false);
     };
-
-    if (profileDropdownOpen) {
-      document.addEventListener('mousedown', handleClickOutside);
-    }
-
-    return () => {
-      document.removeEventListener('mousedown', handleClickOutside);
-    };
+    if (profileDropdownOpen) document.addEventListener('mousedown', handler);
+    return () => document.removeEventListener('mousedown', handler);
   }, [profileDropdownOpen]);
 
   useEffect(() => {
-    const unsubscribe = onAuthStateChange(async (user) => {
+    const unsub = onAuthStateChange(async (user) => {
       if (user) {
         const profile = await getUserProfile(user.uid);
         setUserProfile(profile);
@@ -69,37 +62,29 @@ function ListingDetailContent() {
         router.push('/login');
       }
     });
-
-    return () => unsubscribe();
+    return () => unsub();
   }, [router, listingId]);
 
   const loadListing = async (profile: UserProfile | null) => {
     try {
       const db = getFirestoreDb();
-      const listingDoc = await getDoc(doc(db, getListingsCollectionPath(), listingId));
-
-      if (!listingDoc.exists()) {
+      const ld = await getDoc(doc(db, getListingsCollectionPath(), listingId));
+      if (!ld.exists()) {
         toast.error('Listing not found');
         router.push('/farmer');
         return;
       }
-
-      const listingData = { id: listingDoc.id, ...listingDoc.data() } as MarketplaceListing;
-      setListing(listingData);
-
+      const data = { id: ld.id, ...ld.data() } as MarketplaceListing;
+      setListing(data);
       if (profile?.location?.latitude && profile?.location?.longitude) {
-        const dist = calculateDistance(
-          profile.location.latitude,
-          profile.location.longitude,
-          listingData.latitude,
-          listingData.longitude
-        );
-        setDistance(dist);
+        setDistance(calculateDistance(
+          profile.location.latitude, profile.location.longitude,
+          data.latitude, data.longitude
+        ));
       }
-
       setLoading(false);
-    } catch (error) {
-      console.error('Error loading listing:', error);
+    } catch (e) {
+      console.error(e);
       toast.error('Failed to load listing');
       router.push('/farmer');
     }
@@ -107,312 +92,261 @@ function ListingDetailContent() {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-[#102213] flex items-center justify-center">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-[#13ec37] mx-auto mb-4"></div>
-          <p className="text-white">Loading...</p>
-        </div>
+      <div className="min-h-screen flex items-center justify-center" style={{ background: 'var(--rf-forest)' }}>
+        <p className="font-instrument italic text-2xl" style={{ color: 'var(--rf-bone)' }}>
+          examining the parcel<span className="animate-pulse">…</span>
+        </p>
       </div>
     );
   }
-
-  if (!listing) {
-    return null;
-  }
+  if (!listing) return null;
 
   if (listing.status !== 'live') {
     return (
-      <div className="min-h-screen bg-[#102213] flex items-center justify-center">
-        <div className="bg-[#1c2e20] border border-[#234829] rounded-xl shadow-lg p-8 max-w-md text-center">
-          <h2 className="text-2xl font-bold text-white mb-4">Listing Not Available</h2>
-          <p className="text-[#92c99b] mb-6">This listing is no longer available for purchase.</p>
-          <Link href="/farmer" className="px-6 py-3 bg-[#13ec37] hover:bg-[#11d832] text-[#112214] rounded-lg font-bold transition-colors">
-            Back to Feed
-          </Link>
+      <div className="min-h-screen flex flex-col" style={{ background: 'var(--rf-forest)', color: 'var(--rf-bone)' }}>
+        <FarmerHeader userProfile={userProfile} active="marketplace"
+          profileDropdownOpen={profileDropdownOpen} setProfileDropdownOpen={setProfileDropdownOpen}
+          dropdownRef={dropdownRef} router={router} />
+        <div className="flex-1 flex items-center justify-center px-6">
+          <div className="max-w-md text-center rounded-2xl p-10 border"
+               style={{ borderColor: 'rgba(241,234,216,.14)', background: 'rgba(241,234,216,.025)' }}>
+            <div className="font-fraunces fraunces-wonk italic text-7xl font-light leading-none mb-4"
+                 style={{ color: 'var(--rf-rust)' }}>ø</div>
+            <h2 className="font-fraunces text-3xl font-medium mb-2">Already claimed.</h2>
+            <p className="font-instrument italic text-lg mb-8" style={{ color: 'rgba(241,234,216,.65)' }}>
+              Another farmer beat you to this one — the loop closes quickly.
+            </p>
+            <Link href="/farmer"
+                  className="inline-flex items-center gap-3 pl-6 pr-1.5 h-12 rounded-full font-mono-jb text-[11px] uppercase tracking-[0.25em]"
+                  style={{ background: 'var(--rf-sap)', color: 'var(--rf-forest)' }}>
+              <span>Back to gather</span>
+              <span className="flex items-center justify-center size-9 rounded-full"
+                    style={{ background: 'var(--rf-forest)', color: 'var(--rf-sap)' }}>→</span>
+            </Link>
+          </div>
         </div>
       </div>
     );
   }
 
+  const allImages = listing.imageUrls && listing.imageUrls.length > 0 ? listing.imageUrls : [listing.imageUrl];
+  const currentImg = allImages[selectedImageIndex] || listing.imageUrl;
+
   return (
-    <div className="font-display bg-[#f6f8f6] dark:bg-[#102213] text-slate-900 dark:text-white antialiased min-h-screen flex flex-col">
-      {/* Top Navigation - Same as Dashboard */}
-      <header className="sticky top-0 z-50 w-full border-b border-solid border-gray-200 dark:border-[#234829] bg-white/80 dark:bg-[#112214]/95 backdrop-blur-md">
-        <div className="w-full px-4 sm:px-6 lg:px-8">
-          <div className="flex items-center justify-between h-16 gap-4">
-            {/* Logo */}
-            <Link href="/farmer" className="flex items-center gap-3 text-slate-900 dark:text-white cursor-pointer">
-              <div className="size-8 text-[#13ec37]">
-                <svg fill="none" viewBox="0 0 48 48" xmlns="http://www.w3.org/2000/svg">
-                  <path d="M42.4379 44C42.4379 44 36.0744 33.9038 41.1692 24C46.8624 12.9336 42.2078 4 42.2078 4L7.01134 4C7.01134 4 11.6577 12.932 5.96912 23.9969C0.876273 33.9029 7.27094 44 7.27094 44L42.4379 44Z" fill="currentColor"></path>
-                </svg>
-              </div>
-              <h1 className="text-white text-lg font-bold tracking-tight hidden sm:block">ReFeed</h1>
-            </Link>
+    <div className="font-fraunces antialiased min-h-screen flex flex-col"
+         style={{ background: 'var(--rf-forest)', color: 'var(--rf-bone)' }}>
 
-            {/* Right Actions */}
-            <div className="flex items-center gap-4">
-              <nav className="hidden md:flex gap-6 mr-4">
-                <Link href="/farmer" className="text-white font-medium text-sm hover:text-[#13ec37] transition-colors">
-                  Marketplace
-                </Link>
-                <Link href="/schedule" className="text-[#92c99b] font-medium text-sm hover:text-white transition-colors">
-                  Pickups
-                </Link>
-                <Link href="/orders" className="text-[#92c99b] font-medium text-sm hover:text-white transition-colors">
-                  Orders
-                </Link>
-              </nav>
-              {userProfile && (
-                <div className="relative" ref={dropdownRef}>
-                  <button
-                    onClick={() => setProfileDropdownOpen(!profileDropdownOpen)}
-                    className="flex items-center gap-2 group"
-                  >
-                    <div className="bg-center bg-no-repeat bg-cover rounded-full size-9 ring-2 ring-[#234829] group-hover:ring-[#13ec37]/50 transition-all shadow-lg bg-gradient-to-br from-[#13ec37] to-green-400 flex items-center justify-center">
-                      <span className="text-[#102213] font-bold text-sm">{userProfile?.name?.charAt(0).toUpperCase() || 'U'}</span>
-                    </div>
-                    <span className="material-symbols-outlined text-[#92c99b] text-sm hidden sm:block group-hover:text-white transition-colors">expand_more</span>
-                  </button>
+      <FarmerHeader
+        userProfile={userProfile}
+        active="marketplace"
+        profileDropdownOpen={profileDropdownOpen}
+        setProfileDropdownOpen={setProfileDropdownOpen}
+        dropdownRef={dropdownRef}
+        router={router}
+      />
 
-                  {profileDropdownOpen && (
-                    <div className="absolute right-0 mt-2 w-56 bg-[#1c2e20] rounded-lg shadow-xl border border-[#234829] py-2 z-50">
-                      <div className="px-4 py-3 border-b border-[#234829]">
-                        <p className="text-sm font-semibold text-white">{userProfile.name}</p>
-                        <p className="text-xs text-[#92c99b] mt-1">{userProfile.contact}</p>
-                        {userProfile.email && (
-                          <p className="text-xs text-[#92c99b] mt-1">{userProfile.email}</p>
-                        )}
-                      </div>
-                      <Link
-                        href="/settings"
-                        className="block px-4 py-2 text-sm font-medium text-[#92c99b] hover:text-white hover:bg-[#234829] transition-colors"
-                        onClick={() => setProfileDropdownOpen(false)}
-                      >
-                        Settings
-                      </Link>
-                      <Link
-                        href="/orders"
-                        className="block px-4 py-2 text-sm font-medium text-[#92c99b] hover:text-white hover:bg-[#234829] transition-colors"
-                        onClick={() => setProfileDropdownOpen(false)}
-                      >
-                        My Orders
-                      </Link>
-                      <Link
-                        href="/schedule"
-                        className="block px-4 py-2 text-sm font-medium text-[#92c99b] hover:text-white hover:bg-[#234829] transition-colors"
-                        onClick={() => setProfileDropdownOpen(false)}
-                      >
-                        Schedule
-                      </Link>
-                      <button
-                        onClick={async () => {
-                          try {
-                            setProfileDropdownOpen(false);
-                            await signOut();
-                            await new Promise(resolve => setTimeout(resolve, 100));
-                            router.push('/');
-                          } catch (error: any) {
-                            console.error('Logout error:', error);
-                            toast.error('Failed to sign out. Please try again.');
-                          }
-                        }}
-                        className="w-full text-left px-4 py-2 text-sm font-medium text-red-400 hover:text-red-300 hover:bg-[#234829] transition-colors flex items-center gap-2"
-                      >
-                        <span className="material-symbols-outlined text-sm">logout</span>
-                        Sign Out
-                      </button>
-                    </div>
-                  )}
-                </div>
-              )}
-            </div>
-          </div>
-        </div>
-      </header>
-
-      <main className="flex-1 w-full px-4 sm:px-6 lg:px-8 py-8">
-        {/* Back Button */}
-        <Link
-          href="/farmer"
-          className="flex items-center gap-2 text-[#92c99b] text-sm font-medium hover:text-white transition-colors w-fit mb-6"
-        >
-          <span className="material-symbols-outlined text-lg">arrow_back</span>
-          Back to Marketplace
+      <main className="flex-1 w-full px-4 sm:px-6 lg:px-10 py-8">
+        <Link href="/farmer"
+              className="inline-flex items-center gap-2 font-mono-jb text-[11px] uppercase tracking-[0.25em] opacity-70 hover:opacity-100 hover:text-[color:var(--rf-sap)] mb-8">
+          <span aria-hidden>←</span> Back to gather
         </Link>
 
-        <div className="bg-white dark:bg-[#1c2e20] rounded-xl shadow-lg overflow-hidden border border-gray-200 dark:border-[#234829]">
-          {/* Image Gallery */}
-          <div className="relative w-full h-64 md:h-96 bg-gray-100 dark:bg-[#102213]">
-            {listing.imageUrls && listing.imageUrls.length > 0 ? (
-              <>
-                <img
-                  src={listing.imageUrls[selectedImageIndex] || listing.imageUrl}
-                  alt={listing.title}
-                  className="w-full h-full object-cover"
-                  onError={(e) => {
-                    const target = e.target as HTMLImageElement;
-                    target.src = listing.imageUrl || 'https://via.placeholder.com/800x400';
-                  }}
-                />
-                {listing.imageUrls.length > 1 && (
-                  <>
-                    <button
-                      onClick={() => setSelectedImageIndex((prev) => (prev > 0 ? prev - 1 : listing.imageUrls!.length - 1))}
-                      className="absolute left-4 top-1/2 -translate-y-1/2 bg-black/50 hover:bg-black/70 text-white rounded-full p-2 transition-colors"
-                    >
-                      <span className="material-symbols-outlined">chevron_left</span>
-                    </button>
-                    <button
-                      onClick={() => setSelectedImageIndex((prev) => (prev < listing.imageUrls!.length - 1 ? prev + 1 : 0))}
-                      className="absolute right-4 top-1/2 -translate-y-1/2 bg-black/50 hover:bg-black/70 text-white rounded-full p-2 transition-colors"
-                    >
-                      <span className="material-symbols-outlined">chevron_right</span>
-                    </button>
-                    <div className="absolute bottom-4 left-1/2 -translate-x-1/2 flex gap-2">
-                      {listing.imageUrls.map((_, index) => (
-                        <button
-                          key={index}
-                          onClick={() => setSelectedImageIndex(index)}
-                          className={`w-2 h-2 rounded-full transition-all ${selectedImageIndex === index
-                              ? 'bg-white w-8'
-                              : 'bg-white/50 hover:bg-white/75'
-                            }`}
-                        />
-                      ))}
-                    </div>
-                  </>
-                )}
-              </>
-            ) : (
-              <img
-                src={listing.imageUrl}
-                alt={listing.title}
-                className="w-full h-full object-cover"
-                onError={(e) => {
-                  const target = e.target as HTMLImageElement;
-                  target.src = 'https://via.placeholder.com/800x400';
-                }}
-              />
+        {/* Editorial header */}
+        <div className="flex items-center justify-between mb-6">
+          <div className="rf-eyebrow flex items-center gap-3">
+            <span className="size-1.5 rounded-full" style={{ background: 'var(--rf-sap)' }} />
+            Specimen №{listing.id?.slice(0, 6).toUpperCase() || '------'}
+          </div>
+          <span className="font-mono-jb text-[10px] uppercase tracking-[0.3em] opacity-60 hidden md:block">
+            pp. 01 — The parcel
+          </span>
+        </div>
+
+        <h1 className="rf-headline text-[clamp(2.5rem,7vw,5.5rem)] mb-10">
+          {listing.title}
+        </h1>
+
+        {/* Two-column layout */}
+        <div className="grid grid-cols-12 gap-x-8 gap-y-10">
+          {/* —— Image gallery —— */}
+          <div className="col-span-12 lg:col-span-7">
+            <div className="relative aspect-[4/3] rounded-2xl overflow-hidden border"
+                 style={{ borderColor: 'rgba(241,234,216,.14)', background: 'var(--rf-moss)' }}>
+              <img src={currentImg} alt={listing.title}
+                   className="w-full h-full object-cover"
+                   onError={(e) => {
+                     const t = e.target as HTMLImageElement;
+                     t.src = listing.imageUrl || 'https://via.placeholder.com/800x600';
+                   }} />
+              {/* Top-left specimen mark */}
+              <div className="absolute top-4 left-4 px-3 py-1.5 rounded-full backdrop-blur-md border font-mono-jb text-[10px] uppercase tracking-[0.25em]"
+                   style={{ background: 'rgba(13,26,16,.6)', borderColor: 'rgba(241,234,216,.18)', color: 'var(--rf-bone)' }}>
+                {allImages.length > 1 ? `${selectedImageIndex + 1} / ${allImages.length}` : 'plate · I'}
+              </div>
+              {allImages.length > 1 && (
+                <>
+                  <button onClick={() => setSelectedImageIndex((p) => p > 0 ? p - 1 : allImages.length - 1)}
+                          aria-label="Previous"
+                          className="absolute left-4 top-1/2 -translate-y-1/2 size-11 rounded-full flex items-center justify-center backdrop-blur-md border transition-all hover:bg-white/10"
+                          style={{ background: 'rgba(13,26,16,.6)', borderColor: 'rgba(241,234,216,.2)', color: 'var(--rf-bone)' }}>
+                    <span className="material-symbols-outlined">chevron_left</span>
+                  </button>
+                  <button onClick={() => setSelectedImageIndex((p) => p < allImages.length - 1 ? p + 1 : 0)}
+                          aria-label="Next"
+                          className="absolute right-4 top-1/2 -translate-y-1/2 size-11 rounded-full flex items-center justify-center backdrop-blur-md border transition-all hover:bg-white/10"
+                          style={{ background: 'rgba(13,26,16,.6)', borderColor: 'rgba(241,234,216,.2)', color: 'var(--rf-bone)' }}>
+                    <span className="material-symbols-outlined">chevron_right</span>
+                  </button>
+                </>
+              )}
+            </div>
+
+            {allImages.length > 1 && (
+              <div className="flex gap-2 mt-4 overflow-x-auto pb-1">
+                {allImages.map((url, i) => (
+                  <button key={i} onClick={() => setSelectedImageIndex(i)}
+                          className="shrink-0 w-20 h-20 rounded-lg overflow-hidden border-2 transition-all"
+                          style={{ borderColor: selectedImageIndex === i ? 'var(--rf-sap)' : 'rgba(241,234,216,.12)' }}>
+                    <img src={url} alt={`Plate ${i + 1}`} className="w-full h-full object-cover" />
+                  </button>
+                ))}
+              </div>
             )}
           </div>
 
-          {/* Thumbnail Gallery */}
-          {listing.imageUrls && listing.imageUrls.length > 1 && (
-            <div className="flex gap-2 p-4 bg-gray-50 dark:bg-[#112214] overflow-x-auto border-b border-gray-200 dark:border-[#234829]">
-              {[listing.imageUrl, ...listing.imageUrls].map((url, index) => (
-                <button
-                  key={index}
-                  onClick={() => setSelectedImageIndex(Math.max(0, index - 1))}
-                  className={`flex-shrink-0 w-20 h-20 rounded-lg overflow-hidden border-2 transition-all ${(index === 0 && selectedImageIndex === 0) || (index > 0 && selectedImageIndex === index - 1)
-                      ? 'border-[#13ec37]'
-                      : 'border-transparent hover:border-[#234829]'
-                    }`}
-                >
-                  <img
-                    src={url}
-                    alt={`Thumbnail ${index + 1}`}
-                    className="w-full h-full object-cover"
-                  />
-                </button>
-              ))}
-            </div>
-          )}
+          {/* —— Details column —— */}
+          <div className="col-span-12 lg:col-span-5">
+            <div className="rounded-2xl p-7 border space-y-7"
+                 style={{ borderColor: 'rgba(241,234,216,.14)', background: 'rgba(241,234,216,.025)' }}>
 
-          <div className="p-8">
-            <div className="flex justify-between items-start mb-4">
-              <div>
-                <h1 className="text-3xl font-bold text-slate-900 dark:text-white mb-2">{listing.title}</h1>
-                <span className="px-3 py-1 bg-green-100 dark:bg-[#234829] text-green-700 dark:text-[#13ec37] rounded-full text-sm font-semibold border dark:border-[#32673b]">
+              {/* Price */}
+              <div className="flex items-baseline justify-between border-b pb-5"
+                   style={{ borderColor: 'rgba(241,234,216,.10)' }}>
+                <div>
+                  <p className="rf-eyebrow mb-1">Price · cash on pickup</p>
+                  <p className="font-fraunces fraunces-wonk text-6xl font-light leading-none tracking-[-0.04em]"
+                     style={{ color: 'var(--rf-sap)' }}>
+                    <span className="font-mono-jb text-base mr-1 align-baseline opacity-70"
+                          style={{ color: 'var(--rf-bone)' }}>{listing.currency}</span>
+                    {listing.price.toFixed(2)}
+                  </p>
+                </div>
+                <span className="px-3 py-1.5 rounded-full font-mono-jb text-[10px] uppercase tracking-[0.25em] border"
+                      style={{ borderColor: 'rgba(241,234,216,.2)', color: 'var(--rf-bone)' }}>
                   {listing.category}
                 </span>
               </div>
-              <div className="text-right">
-                <p className="text-3xl font-bold text-emerald-600 dark:text-[#13ec37]">
-                  {listing.currency} {listing.price.toFixed(2)}
-                </p>
-                <p className="text-sm text-gray-500 dark:text-[#92c99b] mt-1">Cash on pickup</p>
-              </div>
-            </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
-              <div>
-                <h3 className="text-sm font-semibold text-gray-700 dark:text-[#92c99b] mb-1">Location</h3>
-                <p className="text-gray-900 dark:text-white">{listing.address}</p>
-                {distance !== null && (
-                  <p className="text-sm text-gray-600 dark:text-[#92c99b] mt-1">{distance.toFixed(1)} km away</p>
-                )}
-              </div>
+              {/* Spec rows */}
+              <SpecRow label="01 · Location" hint={distance !== null ? `${distance.toFixed(1)} km away` : undefined}>
+                <p className="font-fraunces text-base leading-snug">{listing.address}</p>
+              </SpecRow>
+
               {listing.weightKg && (
-                <div>
-                  <h3 className="text-sm font-semibold text-gray-700 dark:text-[#92c99b] mb-1">Weight</h3>
-                  <p className="text-gray-900 dark:text-white">~{listing.weightKg} kg</p>
-                </div>
+                <SpecRow label="02 · Weight">
+                  <p className="font-fraunces fraunces-wonk italic text-3xl font-light"
+                     style={{ color: 'var(--rf-bone)' }}>
+                    ~{listing.weightKg}<span className="font-mono-jb text-xs ml-1 not-italic opacity-60">kg</span>
+                  </p>
+                </SpecRow>
               )}
+
               {listing.expiryAt && (
-                <div>
-                  <h3 className="text-sm font-semibold text-gray-700 dark:text-[#92c99b] mb-1">Expiry</h3>
-                  <p className="text-gray-900 dark:text-white">{new Date(listing.expiryAt).toLocaleDateString()}</p>
-                </div>
+                <SpecRow label="03 · Use by">
+                  <p className="font-fraunces text-base">
+                    {new Date(listing.expiryAt).toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' })}
+                  </p>
+                </SpecRow>
               )}
+
               {listing.generatorName && (
-                <div>
-                  <h3 className="text-sm font-semibold text-gray-700 dark:text-[#92c99b] mb-1">Generator</h3>
-                  <p className="text-gray-900 dark:text-white">{listing.generatorName}</p>
-                </div>
+                <SpecRow label="04 · Kitchen">
+                  <p className="font-instrument italic text-xl" style={{ color: 'var(--rf-bone)' }}>
+                    {listing.generatorName}
+                  </p>
+                </SpecRow>
               )}
             </div>
 
-            {listing.notes && (
-              <div className="mb-6">
-                <h3 className="text-sm font-semibold text-gray-700 dark:text-[#92c99b] mb-2">Notes</h3>
-                <p className="text-gray-900 dark:text-white">{listing.notes}</p>
-              </div>
-            )}
-
-            <div className="mb-6">
-              <h3 className="text-sm font-semibold text-gray-700 dark:text-[#92c99b] mb-2">Available Pickup Windows</h3>
-              <div className="space-y-2">
-                {listing.pickupWindows.map((window, index) => {
-                  const now = new Date();
-                  const windowStart = new Date(window.start);
-                  const isPast = windowStart < now;
-
-                  return (
-                    <div
-                      key={index}
-                      className={`p-3 rounded-lg border ${isPast
-                          ? 'bg-gray-50 dark:bg-[#112214] border-gray-200 dark:border-[#234829] opacity-60'
-                          : 'bg-gray-50 dark:bg-[#112214] border-gray-200 dark:border-[#234829]'
-                        }`}
-                    >
-                      <p className="text-gray-900 dark:text-white">
-                        {new Date(window.start).toLocaleString()} - {new Date(window.end).toLocaleString()}
-                      </p>
-                    </div>
-                  );
-                })}
-              </div>
-            </div>
-
-            <div className="flex gap-4">
-              <Link
-                href="/farmer"
-                className="flex-1 px-6 py-3 bg-gray-200 dark:bg-[#234829] text-gray-900 dark:text-white rounded-lg hover:bg-gray-300 dark:hover:bg-[#32673b] transition-all font-semibold text-center border dark:border-[#32673b]"
-              >
-                Back
+            {/* CTA */}
+            <div className="flex gap-3 mt-6">
+              <Link href="/farmer"
+                    className="flex-1 inline-flex items-center justify-center h-14 rounded-full font-mono-jb text-[11px] uppercase tracking-[0.25em] border transition-all hover:bg-white/5"
+                    style={{ borderColor: 'rgba(241,234,216,.2)', color: 'var(--rf-bone)' }}>
+                ← Keep looking
               </Link>
-              <Link
-                href={`/farmer/checkout/${listingId}`}
-                className="flex-1 px-6 py-3 bg-[#13ec37] hover:bg-[#11d832] text-[#112214] rounded-lg transition-all shadow-md hover:shadow-lg font-bold text-center flex items-center justify-center gap-2"
-              >
-                Buy Now (FCFS)
-                <span className="material-symbols-outlined text-lg">arrow_forward</span>
+              <Link href={`/farmer/checkout/${listingId}`}
+                    className="group flex-[1.5] inline-flex items-center justify-between pl-6 pr-2 h-14 rounded-full font-mono-jb text-[12px] uppercase tracking-[0.25em] transition-all hover:-translate-y-0.5 rf-glow-sap"
+                    style={{ background: 'var(--rf-sap)', color: 'var(--rf-forest)' }}>
+                <span>Claim — FCFS</span>
+                <span className="flex items-center justify-center size-11 rounded-full transition-transform group-hover:rotate-45"
+                      style={{ background: 'var(--rf-forest)', color: 'var(--rf-sap)' }}>
+                  <svg viewBox="0 0 24 24" className="size-4" fill="none" stroke="currentColor" strokeWidth="2">
+                    <path d="M7 17L17 7M9 7h8v8" strokeLinecap="round" strokeLinejoin="round" />
+                  </svg>
+                </span>
               </Link>
             </div>
           </div>
+
+          {/* —— Notes & windows row —— */}
+          {listing.notes && (
+            <section className="col-span-12 lg:col-span-7 rf-fade-up">
+              <div className="rf-eyebrow mb-3">§ Field notes</div>
+              <p className="font-instrument italic text-2xl leading-snug"
+                 style={{ color: 'rgba(241,234,216,.8)' }}>
+                &ldquo;{listing.notes}&rdquo;
+              </p>
+            </section>
+          )}
+
+          <section className="col-span-12 lg:col-span-5 rf-fade-up">
+            <div className="rf-eyebrow mb-4">Available pickup windows</div>
+            <div className="space-y-2">
+              {listing.pickupWindows.map((w, i) => {
+                const start = new Date(w.start);
+                const end = new Date(w.end);
+                const isPast = end < new Date();
+                return (
+                  <div key={i}
+                       className="px-4 py-3 rounded-xl border flex items-start gap-3"
+                       style={{
+                         borderColor: 'rgba(241,234,216,.12)',
+                         background: 'rgba(241,234,216,.025)',
+                         opacity: isPast ? 0.4 : 1,
+                       }}>
+                    <span className="font-fraunces fraunces-wonk italic text-2xl font-light leading-none shrink-0"
+                          style={{ color: 'var(--rf-sap)' }}>
+                      {String(i + 1).padStart(2, '0')}
+                    </span>
+                    <div className="flex-1">
+                      <p className="font-fraunces text-base leading-tight">
+                        {start.toLocaleString([], { weekday: 'short', month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' })}
+                      </p>
+                      <p className="font-mono-jb text-[10px] uppercase tracking-[0.2em] opacity-60 mt-0.5">
+                        → {end.toLocaleString([], { weekday: 'short', month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' })}
+                      </p>
+                      {isPast && <p className="font-mono-jb text-[9px] uppercase tracking-[0.25em] mt-1" style={{ color: 'var(--rf-rust)' }}>passed</p>}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </section>
         </div>
       </main>
+    </div>
+  );
+}
+
+function SpecRow({ label, hint, children }: { label: string; hint?: string; children: React.ReactNode }) {
+  return (
+    <div>
+      <div className="flex items-baseline justify-between mb-1.5">
+        <span className="rf-eyebrow">{label}</span>
+        {hint && <span className="font-mono-jb text-[10px] uppercase tracking-[0.2em] opacity-60">{hint}</span>}
+      </div>
+      {children}
     </div>
   );
 }

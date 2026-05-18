@@ -24,19 +24,17 @@ interface FarmerListingMapProps {
   userProfile: UserProfile | null;
   selectedListingId?: string | null;
   onListingSelect?: (listing: MarketplaceListing | null) => void;
-  mapKey?: string | number;
 }
 
 export default function FarmerListingMap({ 
   listings, 
   userProfile, 
-  selectedListingId, 
+  selectedListingId,
   onListingSelect,
-  mapKey 
 }: FarmerListingMapProps) {
   const [selectedListing, setSelectedListing] = useState<MarketplaceListing | null>(null);
   const [mapCenter, setMapCenter] = useState(defaultCenter);
-  const [mapZoom, setMapZoom] = useState(12);
+  const [mapZoom] = useState(12);
   const mapRef = useRef<google.maps.Map | null>(null);
 
   const apiKey = process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY || '';
@@ -75,23 +73,28 @@ export default function FarmerListingMap({
     }
   }, [selectedListingId, listings]);
 
+  // NOTE: Google Maps API does not parse CSS variables; these literals must stay in sync
+  // with the editorial palette tokens defined in app/globals.css.
+  const PIN_FILL = '#c8ff4d';   // --rf-sap
+  const PIN_STROKE = '#f1ead8'; // --rf-bone
+
   const createCustomIcon = (isSelected: boolean) => {
     return {
       path: google.maps.SymbolPath.CIRCLE,
       scale: isSelected ? 14 : 10,
-      fillColor: '#13ec37',
+      fillColor: PIN_FILL,
       fillOpacity: isSelected ? 1 : 0.8,
-      strokeColor: isSelected ? '#FFFFFF' : '#FFFFFF',
+      strokeColor: PIN_STROKE,
       strokeWeight: isSelected ? 3 : 2,
     };
   };
 
   if (!isLoaded) {
     return (
-      <div className="w-full h-full flex items-center justify-center bg-[#1a351f]" style={{ transform: 'translateZ(0)' }}>
+      <div className="w-full h-full flex items-center justify-center bg-[var(--rf-moss)]" style={{ transform: 'translateZ(0)' }}>
         <div className="text-center">
-          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-[#13ec37] mx-auto mb-2"></div>
-          <p className="text-xs text-[#92c99b]">Loading map...</p>
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-[var(--rf-sap)] mx-auto mb-2"></div>
+          <p className="text-xs text-[var(--rf-bone-muted)]">Loading map...</p>
         </div>
       </div>
     );
@@ -100,7 +103,7 @@ export default function FarmerListingMap({
   return (
     <div className="relative w-full h-full">
       {/* Map Legend */}
-      <div className="absolute bottom-4 left-4 z-10 bg-[#1c2e20] border border-[#234829] rounded-lg shadow-lg p-3 backdrop-blur-sm">
+      <div className="absolute bottom-4 left-4 z-10 bg-[var(--rf-card)] border border-[var(--rf-moss)] rounded-lg shadow-lg p-3 backdrop-blur-sm">
         <h4 className="text-xs font-bold text-white mb-2 uppercase tracking-wide">Legend</h4>
         <div className="flex flex-col gap-2">
           {/* Your Current Location */}
@@ -110,12 +113,12 @@ export default function FarmerListingMap({
                 width: '12px',
                 height: '12px',
                 borderRadius: '50%',
-                backgroundColor: '#3b82f6',
-                border: '2px solid #ffffff',
+                backgroundColor: 'var(--rf-rust)',
+                border: '2px solid var(--rf-bone)',
                 flexShrink: 0,
               }}
             />
-            <span className="text-xs text-[#92c99b]">Your Current Location</span>
+            <span className="text-xs text-[var(--rf-bone-muted)]">Your Current Location</span>
           </div>
           {/* Active Listings */}
           <div className="flex items-center gap-2">
@@ -124,12 +127,12 @@ export default function FarmerListingMap({
                 width: '12px',
                 height: '12px',
                 borderRadius: '50%',
-                backgroundColor: '#13ec37',
-                border: '2px solid #ffffff',
+                backgroundColor: 'var(--rf-sap)',
+                border: '2px solid var(--rf-bone)',
                 flexShrink: 0,
               }}
             />
-            <span className="text-xs text-[#92c99b]">Active Listings</span>
+            <span className="text-xs text-[var(--rf-bone-muted)]">Active Listings</span>
           </div>
         </div>
       </div>
@@ -160,7 +163,7 @@ export default function FarmerListingMap({
           {
             featureType: 'all',
             elementType: 'geometry',
-            stylers: [{ color: '#1a351f' }],
+            stylers: [{ color: '#1a2f1d' }], // --rf-moss (Maps API needs literal hex)
           },
           {
             featureType: 'all',
@@ -180,7 +183,7 @@ export default function FarmerListingMap({
           {
             featureType: 'water',
             elementType: 'geometry',
-            stylers: [{ color: '#234829' }],
+            stylers: [{ color: '#1a2f1d' }], // --rf-moss (Maps API needs literal hex)
           },
           {
             featureType: 'water',
@@ -236,11 +239,12 @@ export default function FarmerListingMap({
             lng: userProfile.location.longitude,
           }}
           icon={{
+            // Your-location marker — rust accent (visually distinct from sap listing pins).
             path: google.maps.SymbolPath.CIRCLE,
             scale: 8,
-            fillColor: '#3b82f6',
+            fillColor: '#d9572a', // --rf-rust
             fillOpacity: 1,
-            strokeColor: '#FFFFFF',
+            strokeColor: '#f1ead8', // --rf-bone
             strokeWeight: 2,
           }}
           zIndex={1000}

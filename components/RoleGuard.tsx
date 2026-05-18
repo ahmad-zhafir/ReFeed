@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { getCurrentUser, onAuthStateChange } from '@/lib/firebase';
+import { onAuthStateChange } from '@/lib/firebase';
 import { User } from 'firebase/auth';
 import { getUserProfile } from '@/lib/userProfile';
 import { MarketplaceRole } from '@/lib/types';
