@@ -120,7 +120,7 @@ function ScheduleContent() {
         <div className="flex items-center justify-between mb-4 rf-fade-up">
           <div className="rf-eyebrow flex items-center gap-3">
             <span className="size-2 rounded-full animate-pulse" style={{ background: 'var(--rf-sap)' }} />
-            Chapter 03 · The Calendar
+            Chapter {isGenerator ? '06' : '03'} · The Calendar
           </div>
           <span className="font-mono-jb text-[10px] uppercase tracking-[0.3em] opacity-60 hidden md:block">
             {orders.length} {orders.length === 1 ? 'pickup' : 'pickups'} pending
