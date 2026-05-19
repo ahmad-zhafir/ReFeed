@@ -1,16 +1,17 @@
 'use client';
 
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect } from 'react';
 import { useRouter, useParams } from 'next/navigation';
 import { getFirestoreDb, onAuthStateChange } from '@/lib/firebase';
 import { doc, getDoc, updateDoc, collection, query, where, getDocs } from 'firebase/firestore';
+import { User } from 'firebase/auth';
 import { MarketplaceListing, UserProfile } from '@/lib/types';
 import { getUserProfile } from '@/lib/userProfile';
 import { getListingsCollectionPath, getOrdersCollectionPath } from '@/lib/constants';
 import RoleGuard from '@/components/RoleGuard';
 import Link from 'next/link';
 import toast from 'react-hot-toast';
-import { GeneratorHeader } from '@/components/GeneratorHeader';
+import { GeneratorLayout } from '@/components/GeneratorLayout';
 
 export default function GeneratorListingDetailPage() {
   return (
@@ -26,27 +27,19 @@ function GeneratorListingDetailContent() {
   const listingId = params.listingId as string;
 
   const [listing, setListing] = useState<MarketplaceListing | null>(null);
+  const [user, setUser] = useState<User | null>(null);
   const [userProfile, setUserProfile] = useState<UserProfile | null>(null);
   const [loading, setLoading] = useState(true);
   const [orderInfo, setOrderInfo] = useState<any>(null);
   const [selectedImageIndex, setSelectedImageIndex] = useState(0);
-  const [profileDropdownOpen, setProfileDropdownOpen] = useState(false);
-  const dropdownRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
-    const handler = (e: MouseEvent) => {
-      if (dropdownRef.current && !dropdownRef.current.contains(e.target as Node)) setProfileDropdownOpen(false);
-    };
-    if (profileDropdownOpen) document.addEventListener('mousedown', handler);
-    return () => document.removeEventListener('mousedown', handler);
-  }, [profileDropdownOpen]);
-
-  useEffect(() => {
-    const unsub = onAuthStateChange(async (user) => {
-      if (user) {
-        const profile = await getUserProfile(user.uid);
+    const unsub = onAuthStateChange(async (currentUser) => {
+      if (currentUser) {
+        setUser(currentUser);
+        const profile = await getUserProfile(currentUser.uid);
         setUserProfile(profile);
-        await loadListing(user.uid);
+        await loadListing(currentUser.uid);
       } else {
         router.push('/login');
       }
@@ -106,15 +99,7 @@ function GeneratorListingDetailContent() {
   const currentImg = allImages[selectedImageIndex] || listing.imageUrl;
 
   return (
-    <div className="font-fraunces antialiased min-h-screen flex flex-col relative"
-         style={{ background: 'var(--rf-forest)', color: 'var(--rf-bone)' }}>
-
-      <div className="pointer-events-none fixed inset-0 rf-dotgrid opacity-40" />
-
-      <GeneratorHeader userProfile={userProfile} active="inventory"
-        profileDropdownOpen={profileDropdownOpen} setProfileDropdownOpen={setProfileDropdownOpen}
-        dropdownRef={dropdownRef} router={router} />
-
+    <GeneratorLayout user={user} userProfile={userProfile} active="inventory" router={router}>
       <main className="relative flex-1 w-full px-4 sm:px-6 lg:px-10 py-10">
         <Link href="/generator/listings"
               className="inline-flex items-center gap-2 font-mono-jb text-[11px] uppercase tracking-[0.25em] opacity-70 hover:opacity-100 hover:text-[color:var(--rf-sap)] mb-8">
@@ -319,7 +304,7 @@ function GeneratorListingDetailContent() {
           </section>
         </div>
       </main>
-    </div>
+    </GeneratorLayout>
   );
 }
 

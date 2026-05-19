@@ -1,8 +1,8 @@
 'use client';
 
-import { useState, useEffect, useMemo, useRef } from 'react';
-import { useRouter } from 'next/navigation';
-import { getFirestoreDb, signOut, onAuthStateChange } from '@/lib/firebase';
+import { useState, useEffect, useMemo } from 'react';
+import { useRouter, useSearchParams } from 'next/navigation';
+import { getFirestoreDb, onAuthStateChange } from '@/lib/firebase';
 import { collection, query, where, onSnapshot, doc, updateDoc, deleteDoc, getDoc } from 'firebase/firestore';
 import { User } from 'firebase/auth';
 import { UserProfile, MarketplaceListing, MarketplaceOrder, Rating } from '@/lib/types';
@@ -11,8 +11,8 @@ import { getListingsCollectionPath, getOrdersCollectionPath, getRatingsCollectio
 import FarmerMapView from '@/components/FarmerMapView';
 import RatingDisplay from '@/components/RatingDisplay';
 import RoleGuard from '@/components/RoleGuard';
+import { GeneratorLayout } from '@/components/GeneratorLayout';
 import Link from 'next/link';
-import Image from 'next/image';
 import toast from 'react-hot-toast';
 
 export default function GeneratorDashboard() {
@@ -25,6 +25,8 @@ export default function GeneratorDashboard() {
 
 function GeneratorDashboardContent() {
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const initialTab = (searchParams?.get('tab') as 'dashboard' | 'inventory' | 'orders' | 'analytics' | 'map' | null) || 'dashboard';
   const [user, setUser] = useState<User | null>(null);
   const [userProfile, setUserProfile] = useState<UserProfile | null>(null);
   const [loading, setLoading] = useState(true);
@@ -32,12 +34,14 @@ function GeneratorDashboardContent() {
   const [orders, setOrders] = useState<MarketplaceOrder[]>([]);
   const [ratings, setRatings] = useState<Record<string, Rating>>({});
   const [searchQuery, setSearchQuery] = useState('');
-  const [activeTab, setActiveTab] = useState<'dashboard' | 'inventory' | 'orders' | 'analytics' | 'map'>('dashboard');
+  const [activeTab, setActiveTab] = useState<'dashboard' | 'inventory' | 'orders' | 'analytics' | 'map'>(initialTab);
+
+  useEffect(() => {
+    const t = searchParams?.get('tab') as 'dashboard' | 'inventory' | 'orders' | 'analytics' | 'map' | null;
+    if (t) setActiveTab(t);
+  }, [searchParams]);
   const [farmers, setFarmers] = useState<UserProfile[]>([]);
   const [orderStatusFilter, setOrderStatusFilter] = useState<'reserved' | 'completed' | 'cancelled'>('reserved');
-  const [profileDropdownOpen, setProfileDropdownOpen] = useState(false);
-  const [sidebarOpen, setSidebarOpen] = useState(false);
-  const dropdownRef = useRef<HTMLDivElement>(null);
 
   const hasUpcomingPickupWindow = (listing: MarketplaceListing): boolean => {
     if (!listing.pickupWindows || listing.pickupWindows.length === 0) {
@@ -201,22 +205,6 @@ function GeneratorDashboardContent() {
       toast.error('Failed to update order');
     }
   };
-
-  useEffect(() => {
-    const handleClickOutside = (event: MouseEvent) => {
-      if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
-        setProfileDropdownOpen(false);
-      }
-    };
-
-    if (profileDropdownOpen) {
-      document.addEventListener('mousedown', handleClickOutside);
-    }
-
-    return () => {
-      document.removeEventListener('mousedown', handleClickOutside);
-    };
-  }, [profileDropdownOpen]);
 
   // —— Real-data metrics ————————————————————————————————————————————
   // CO2e scaling factor: 1kg food waste avoided from landfill ≈ 2.5 kg CO2e
@@ -494,233 +482,8 @@ function GeneratorDashboardContent() {
     );
   }
   return (
-    <div className="font-fraunces antialiased overflow-hidden flex flex-col h-screen" style={{ background: 'var(--rf-forest)', color: 'var(--rf-bone)' }}>
-      {/* Header */}
-      <header className="sticky top-0 z-50 w-full backdrop-blur-xl border-b" style={{ background: 'rgba(13,26,16,.85)', borderColor: 'rgba(241,234,216,.10)' }}>
-        <div className="px-6 md:px-10 py-3 flex items-center justify-between w-full">
-          <Link href="/generator" className="flex items-center gap-3 cursor-pointer">
-            <div className="relative size-9">
-              <Image src="/images/logo.svg" alt="ReFeed logo" fill sizes="36px" priority className="object-contain" />
-            </div>
-            <div className="flex flex-col leading-none">
-              <h2 className="font-fraunces fraunces-wonk text-xl font-black tracking-[-0.03em]">
-                Re<span className="italic font-light" style={{ color: 'var(--rf-sap)' }}>Feed</span>
-              </h2>
-              <span className="font-mono-jb text-[8px] uppercase tracking-[0.32em] mt-0.5 opacity-60">Kitchen · Ledger</span>
-            </div>
-          </Link>
-
-          <div className="flex items-center gap-4 ml-auto">
-            {userProfile && (
-              <div className="relative" ref={dropdownRef}>
-                <button
-                  onClick={() => setProfileDropdownOpen(!profileDropdownOpen)}
-                  className="flex items-center gap-2 group"
-                >
-                  <div className="bg-center bg-no-repeat bg-cover rounded-full size-9 ring-2 ring-[var(--rf-moss)] group-hover:ring-[var(--rf-sap)]/50 transition-all shadow-lg bg-gradient-to-br from-[var(--rf-sap)] to-green-400 flex items-center justify-center">
-                    <span className="text-[var(--rf-forest)] font-bold text-sm">{userProfile?.name?.charAt(0).toUpperCase() || 'U'}</span>
-                  </div>
-                  <span className="material-symbols-outlined text-[var(--rf-bone-muted)] text-sm hidden sm:block group-hover:text-[var(--rf-bone)] transition-colors">expand_more</span>
-                </button>
-
-                {profileDropdownOpen && (
-                  <div className="absolute right-0 mt-2 w-56 bg-[var(--rf-card)] rounded-lg shadow-xl border border-[var(--rf-moss)] py-2 z-50">
-                    <div className="px-4 py-3 border-b border-[var(--rf-moss)]">
-                      <p className="text-sm font-semibold text-[var(--rf-bone)]">{userProfile?.name}</p>
-                      <p className="text-xs text-[var(--rf-bone-muted)] mt-1">{userProfile?.contact}</p>
-                    </div>
-                    <Link href="/settings" className="block px-4 py-2 text-sm font-medium text-[var(--rf-bone-muted)] hover:text-[var(--rf-bone)] hover:bg-[var(--rf-moss)] transition-colors">
-                      Settings
-                    </Link>
-                    <button
-                      onClick={() => {
-                        setProfileDropdownOpen(false);
-                        setActiveTab('orders');
-                      }}
-                      className="block w-full text-left px-4 py-2 text-sm font-medium text-[var(--rf-bone-muted)] hover:text-[var(--rf-bone)] hover:bg-[var(--rf-moss)] transition-colors"
-                    >
-                      Orders
-                    </button>
-                    <button
-                      onClick={async () => {
-                        try {
-                          setProfileDropdownOpen(false);
-                          await signOut();
-                          await new Promise(resolve => setTimeout(resolve, 100));
-                          router.push('/');
-                        } catch (error: any) {
-                          console.error('Logout error:', error);
-                          toast.error('Failed to sign out. Please try again.');
-                        }
-                      }}
-                      className="w-full text-left px-4 py-2 text-sm font-medium text-[var(--rf-rust)] hover:opacity-90 hover:bg-white/5 transition-colors flex items-center gap-2"
-                    >
-                      Sign Out
-                    </button>
-                  </div>
-                )}
-              </div>
-            )}
-
-            <button
-              onClick={() => setSidebarOpen(!sidebarOpen)}
-              className="md:hidden text-slate-900 dark:text-[var(--rf-bone)]"
-            >
-              <span className="material-symbols-outlined">menu</span>
-            </button>
-          </div>
-        </div>
-      </header>
-
-      <div className="flex flex-1 overflow-hidden relative">
-        {/* Mobile Backdrop */}
-        {sidebarOpen && (
-          <div
-            className="fixed inset-0 bg-black/50 z-40 lg:hidden"
-            onClick={() => setSidebarOpen(false)}
-          />
-        )}
-
-        {/* Sidebar */}
-        <aside className={`w-64 flex-shrink-0 border-r border-[var(--rf-moss)] bg-[var(--rf-ink)] flex flex-col justify-between p-4 transition-transform duration-300 ${sidebarOpen ? 'fixed lg:relative inset-y-0 left-0 z-50' : 'hidden lg:flex'} ${sidebarOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'}`}>
-          <div className="flex flex-col gap-6">
-            <div className="flex gap-3 items-center px-3 py-4 bg-[var(--rf-card)]/50 rounded-xl border border-[var(--rf-moss)]">
-              <div className="bg-center bg-no-repeat bg-cover rounded-full size-10 border-2 border-[var(--rf-moss)] shrink-0 bg-gradient-to-br from-[var(--rf-sap)] to-green-400 flex items-center justify-center">
-                <span className="text-[var(--rf-forest)] font-bold text-sm">{userProfile?.name?.charAt(0).toUpperCase() || 'R'}</span>
-              </div>
-              <div className="flex min-w-0 flex-col">
-                <h1 className="text-[var(--rf-bone)] text-sm font-bold leading-tight truncate">{userProfile?.name || 'Restaurant'}</h1>
-                <p className="text-[var(--rf-bone-muted)] text-[10px] font-normal uppercase tracking-wide">Restaurant Admin</p>
-                {userProfile?.averageRating && userProfile.averageRating > 0 && (
-                  <div className="mt-1.5">
-                    <RatingDisplay 
-                      rating={userProfile.averageRating} 
-                      totalRatings={userProfile.totalRatings}
-                      showCount={false}
-                      size="sm"
-                    />
-                  </div>
-                )}
-              </div>
-            </div>
-
-            <nav className="flex flex-col gap-1.5">
-              <p className="px-3 text-xs font-semibold text-[var(--rf-bone-dim)] uppercase tracking-wider mb-2">Menu</p>
-
-              <button
-                onClick={() => {
-                  setActiveTab('dashboard');
-                  setSidebarOpen(false);
-                }}
-                className={`flex items-center gap-3 px-3 py-2.5 rounded-lg text-left transition-colors group ${activeTab === 'dashboard'
-                  ? 'text-[color:var(--rf-sap)] bg-[rgba(200,255,77,0.06)] border border-[rgba(200,255,77,0.25)]'
-                  : 'border border-transparent hover:bg-white/5 opacity-70 hover:opacity-100'
-                  }`}
-              >
-                <span className={`material-symbols-outlined transition-transform ${activeTab === 'dashboard' ? 'text-[var(--rf-sap)] group-hover:scale-110' : 'group-hover:text-[var(--rf-sap)]'}`}>dashboard</span>
-                <p className="font-mono-jb text-[11px] uppercase tracking-[0.22em]"><span className="opacity-50 mr-1.5">01</span>Dashboard</p>
-              </button>
-
-              <button
-                onClick={() => {
-                  setActiveTab('inventory');
-                  setSidebarOpen(false);
-                }}
-                className={`flex items-center gap-3 px-3 py-2.5 rounded-lg text-left transition-colors group ${activeTab === 'inventory'
-                  ? 'text-[color:var(--rf-sap)] bg-[rgba(200,255,77,0.06)] border border-[rgba(200,255,77,0.25)]'
-                  : 'border border-transparent hover:bg-white/5 opacity-70 hover:opacity-100'
-                  }`}
-              >
-                <span className={`material-symbols-outlined transition-colors ${activeTab === 'inventory' ? 'text-[var(--rf-sap)]' : 'group-hover:text-[var(--rf-sap)]'}`}>recycling</span>
-                <p className="font-mono-jb text-[11px] uppercase tracking-[0.22em]"><span className="opacity-50 mr-1.5">02</span>Inventory</p>
-              </button>
-
-              <button
-                onClick={() => {
-                  setActiveTab('orders');
-                  setSidebarOpen(false);
-                }}
-                className={`flex items-center gap-3 px-3 py-2.5 rounded-lg text-left transition-colors group ${activeTab === 'orders'
-                  ? 'text-[color:var(--rf-sap)] bg-[rgba(200,255,77,0.06)] border border-[rgba(200,255,77,0.25)]'
-                  : 'border border-transparent hover:bg-white/5 opacity-70 hover:opacity-100'
-                  }`}
-              >
-                <span className={`material-symbols-outlined transition-colors ${activeTab === 'orders' ? 'text-[var(--rf-sap)]' : 'group-hover:text-[var(--rf-sap)]'}`}>receipt_long</span>
-                <p className="font-mono-jb text-[11px] uppercase tracking-[0.22em]"><span className="opacity-50 mr-1.5">03</span>Orders</p>
-              </button>
-
-              <button
-                onClick={() => {
-                  setActiveTab('analytics');
-                  setSidebarOpen(false);
-                }}
-                className={`flex items-center gap-3 px-3 py-2.5 rounded-lg text-left transition-colors group ${activeTab === 'analytics'
-                  ? 'text-[color:var(--rf-sap)] bg-[rgba(200,255,77,0.06)] border border-[rgba(200,255,77,0.25)]'
-                  : 'border border-transparent hover:bg-white/5 opacity-70 hover:opacity-100'
-                  }`}
-              >
-                <span className={`material-symbols-outlined transition-colors ${activeTab === 'analytics' ? 'text-[var(--rf-sap)]' : 'group-hover:text-[var(--rf-sap)]'}`}>query_stats</span>
-                <p className="font-mono-jb text-[11px] uppercase tracking-[0.22em]"><span className="opacity-50 mr-1.5">04</span>Analytics</p>
-              </button>
-
-              <button
-                onClick={() => {
-                  setActiveTab('map');
-                  setSidebarOpen(false);
-                }}
-                className={`flex items-center gap-3 px-3 py-2.5 rounded-lg text-left transition-colors group ${activeTab === 'map'
-                  ? 'text-[color:var(--rf-sap)] bg-[rgba(200,255,77,0.06)] border border-[rgba(200,255,77,0.25)]'
-                  : 'border border-transparent hover:bg-white/5 opacity-70 hover:opacity-100'
-                  }`}
-              >
-                <span className={`material-symbols-outlined transition-colors ${activeTab === 'map' ? 'text-[var(--rf-sap)]' : 'group-hover:text-[var(--rf-sap)]'}`}>map</span>
-                <p className="font-mono-jb text-[11px] uppercase tracking-[0.22em]"><span className="opacity-50 mr-1.5">05</span>Field</p>
-              </button>
-            </nav>
-          </div>
-
-          <div className="flex flex-col gap-4">
-            <div className="p-4 rounded-2xl border" style={{ borderColor: 'rgba(241,234,216,.14)', background: 'rgba(241,234,216,.025)' }}>
-              <div className="flex items-baseline justify-between mb-2">
-                <span className="rf-eyebrow" style={{ color: 'var(--rf-bone)', opacity: 0.65 }}>Sell-through</span>
-                <span className="font-fraunces fraunces-wonk italic text-2xl font-light leading-none" style={{ color: 'var(--rf-sap)' }}>
-                  {sellThroughRate.toFixed(0)}<span className="font-mono-jb text-[10px] ml-0.5 not-italic opacity-70">%</span>
-                </span>
-              </div>
-              <div className="w-full rounded-full h-1 mb-2" style={{ background: 'rgba(241,234,216,.1)' }}>
-                <div className="h-1 rounded-full transition-all" style={{ width: `${Math.min(100, sellThroughRate)}%`, background: 'var(--rf-sap)' }}></div>
-              </div>
-              <p className="font-mono-jb text-[9px] uppercase tracking-[0.22em] opacity-50">
-                {completedListings.length} of {totalListings} listings collected
-              </p>
-            </div>
-
-            <Link href="/settings" className="flex items-center gap-3 px-3 py-2.5 rounded-lg hover:bg-[var(--rf-moss)] text-[var(--rf-bone-muted)] hover:text-[var(--rf-bone)] transition-colors group">
-              <span className="material-symbols-outlined group-hover:text-[var(--rf-sap)] transition-colors">settings</span>
-              <p className="text-sm font-medium">Settings</p>
-            </Link>
-
-            <button
-              onClick={async () => {
-                try {
-                  await signOut();
-                  await new Promise(resolve => setTimeout(resolve, 100));
-                  router.push('/');
-                } catch (error: any) {
-                  console.error('Logout error:', error);
-                  toast.error('Failed to sign out. Please try again.');
-                }
-              }}
-              className="flex items-center gap-3 px-3 py-2 text-[var(--rf-bone-muted)] hover:text-[var(--rf-bone)] transition-colors hover:bg-[var(--rf-moss)] rounded-lg"
-            >
-              <span className="material-symbols-outlined">logout</span>
-              <p className="text-sm font-medium">Log Out</p>
-            </button>
-          </div>
-        </aside>
-
-        {/* Main Content */}
-        <main className="flex-1 flex flex-col h-full overflow-hidden bg-[var(--rf-forest)] relative">
+    <GeneratorLayout user={user} userProfile={userProfile} active={activeTab} router={router}>
+      <div className="flex-1 flex flex-col h-full overflow-hidden bg-[var(--rf-forest)] relative">
           {/* Search Bar */}
           <div className="flex-none h-16 border-b border-[var(--rf-moss)] px-6 py-3 flex items-center justify-between bg-[var(--rf-forest)]/90 backdrop-blur-sm sticky top-0 z-10">
             <div className="w-full max-w-lg">
@@ -1736,9 +1499,8 @@ function GeneratorDashboardContent() {
               </>
             )}
           </div>
-        </main>
       </div>
-    </div>
+    </GeneratorLayout>
   );
 }
 

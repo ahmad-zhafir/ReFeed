@@ -11,7 +11,7 @@ import { getListingsCollectionPath } from '@/lib/constants';
 import RoleGuard from '@/components/RoleGuard';
 import Link from 'next/link';
 import toast from 'react-hot-toast';
-import { GeneratorHeader } from '@/components/GeneratorHeader';
+import { GeneratorLayout } from '@/components/GeneratorLayout';
 
 export default function GeneratorListingsPage() {
   return (
@@ -116,15 +116,7 @@ function GeneratorListingsContent() {
   }
 
   return (
-    <div className="font-fraunces antialiased min-h-screen flex flex-col relative"
-         style={{ background: 'var(--rf-forest)', color: 'var(--rf-bone)' }}>
-
-      <div className="pointer-events-none fixed inset-0 rf-dotgrid opacity-40" />
-
-      <GeneratorHeader userProfile={userProfile} active="inventory"
-        profileDropdownOpen={profileDropdownOpen} setProfileDropdownOpen={setProfileDropdownOpen}
-        dropdownRef={dropdownRef} router={router} />
-
+    <GeneratorLayout user={user} userProfile={userProfile} active="inventory" router={router}>
       <main className="relative flex-1 w-full px-4 sm:px-6 lg:px-10 py-10">
 
         {/* Editorial header */}
@@ -270,7 +262,7 @@ function GeneratorListingsContent() {
           </div>
         )}
       </main>
-    </div>
+    </GeneratorLayout>
   );
 }
 

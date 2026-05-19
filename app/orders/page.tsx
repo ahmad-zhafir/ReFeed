@@ -12,7 +12,8 @@ import AuthGuard from '@/components/AuthGuard';
 import RatingModal from '@/components/RatingModal';
 import Link from 'next/link';
 import toast from 'react-hot-toast';
-import { RoleAwareHeader } from '@/components/GeneratorHeader';
+import { FarmerHeader } from '@/components/FarmerHeader';
+import { GeneratorLayout } from '@/components/GeneratorLayout';
 
 export default function OrdersPage() {
   return (
@@ -137,16 +138,10 @@ function OrdersContent() {
   const cancelledOrders = orders.filter((o) => o.status === 'cancelled');
   const currentTabOrders = activeTab === 'reserved' ? reservedOrders : activeTab === 'completed' ? completedOrders : cancelledOrders;
 
-  return (
-    <div className="font-fraunces antialiased min-h-screen flex flex-col relative"
-         style={{ background: 'var(--rf-forest)', color: 'var(--rf-bone)' }}>
+  const isGenerator = role === 'generator';
 
-      <div className="pointer-events-none fixed inset-0 rf-dotgrid opacity-40" />
-
-      <RoleAwareHeader userProfile={userProfile} active="orders"
-        profileDropdownOpen={profileDropdownOpen} setProfileDropdownOpen={setProfileDropdownOpen}
-        dropdownRef={dropdownRef} router={router} />
-
+  const content = (
+    <>
       <main className="relative flex-1 w-full px-4 sm:px-6 lg:px-10 py-10">
 
         <div className="flex items-center justify-between mb-4 rf-fade-up">
@@ -218,6 +213,25 @@ function OrdersContent() {
           }}
         />
       )}
+    </>
+  );
+
+  if (isGenerator) {
+    return (
+      <GeneratorLayout user={user} userProfile={userProfile} active="orders" router={router}>
+        {content}
+      </GeneratorLayout>
+    );
+  }
+
+  return (
+    <div className="font-fraunces antialiased min-h-screen flex flex-col relative"
+         style={{ background: 'var(--rf-forest)', color: 'var(--rf-bone)' }}>
+      <div className="pointer-events-none fixed inset-0 rf-dotgrid opacity-40" />
+      <FarmerHeader userProfile={userProfile} active="orders"
+        profileDropdownOpen={profileDropdownOpen} setProfileDropdownOpen={setProfileDropdownOpen}
+        dropdownRef={dropdownRef} router={router} />
+      {content}
     </div>
   );
 }

@@ -10,7 +10,8 @@ import { getUserProfile } from '@/lib/userProfile';
 import { getOrdersCollectionPath } from '@/lib/constants';
 import AuthGuard from '@/components/AuthGuard';
 import Link from 'next/link';
-import { RoleAwareHeader } from '@/components/GeneratorHeader';
+import { FarmerHeader } from '@/components/FarmerHeader';
+import { GeneratorLayout } from '@/components/GeneratorLayout';
 
 export default function SchedulePage() {
   return (
@@ -111,17 +112,10 @@ function ScheduleContent() {
     setSelectedDate(d);
   };
 
-  return (
-    <div className="font-fraunces antialiased min-h-screen flex flex-col relative"
-         style={{ background: 'var(--rf-forest)', color: 'var(--rf-bone)' }}>
+  const isGenerator = userProfile?.role === 'generator';
 
-      <div className="pointer-events-none fixed inset-0 rf-dotgrid opacity-40" />
-
-      <RoleAwareHeader userProfile={userProfile} active="schedule"
-        profileDropdownOpen={profileDropdownOpen} setProfileDropdownOpen={setProfileDropdownOpen}
-        dropdownRef={dropdownRef} router={router} />
-
-      <main className="relative flex-1 w-full px-4 sm:px-6 lg:px-10 py-10">
+  const content = (
+    <main className="relative flex-1 w-full px-4 sm:px-6 lg:px-10 py-10">
 
         <div className="flex items-center justify-between mb-4 rf-fade-up">
           <div className="rf-eyebrow flex items-center gap-3">
@@ -363,6 +357,24 @@ function ScheduleContent() {
           </>
         )}
       </main>
+  );
+
+  if (isGenerator) {
+    return (
+      <GeneratorLayout user={user} userProfile={userProfile} active="schedule" router={router}>
+        {content}
+      </GeneratorLayout>
+    );
+  }
+
+  return (
+    <div className="font-fraunces antialiased min-h-screen flex flex-col relative"
+         style={{ background: 'var(--rf-forest)', color: 'var(--rf-bone)' }}>
+      <div className="pointer-events-none fixed inset-0 rf-dotgrid opacity-40" />
+      <FarmerHeader userProfile={userProfile} active="pickups"
+        profileDropdownOpen={profileDropdownOpen} setProfileDropdownOpen={setProfileDropdownOpen}
+        dropdownRef={dropdownRef} router={router} />
+      {content}
     </div>
   );
 }
