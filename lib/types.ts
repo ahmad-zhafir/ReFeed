@@ -107,6 +107,7 @@ export interface MarketplaceListing {
   scheduledWindow?: MarketplacePickupWindow;
 
   createdAt: any; // Firestore Timestamp
+  completedAt?: any; // Firestore Timestamp — set when the handover is confirmed
 }
 
 export type MarketplaceOrderStatus = 'reserved' | 'completed' | 'cancelled';
@@ -135,6 +136,7 @@ export interface MarketplaceOrder {
   ratingId?: string; // Link to rating if rated
 
   createdAt: any; // Firestore Timestamp
+  completedAt?: any; // Firestore Timestamp — set when the order is marked collected
  }
 
 export interface Rating {

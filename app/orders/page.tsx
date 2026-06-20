@@ -3,11 +3,11 @@
 import { useState, useEffect, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import { getFirestoreDb, onAuthStateChange } from '@/lib/firebase';
-import { collection, query, where, onSnapshot } from 'firebase/firestore';
+import { collection, query, where, onSnapshot, doc, runTransaction, Timestamp } from 'firebase/firestore';
 import { User } from 'firebase/auth';
-import { MarketplaceOrder, MarketplaceRole, UserProfile } from '@/lib/types';
+import { MarketplaceListing, MarketplaceOrder, MarketplaceRole, UserProfile } from '@/lib/types';
 import { getUserProfile } from '@/lib/userProfile';
-import { getOrdersCollectionPath } from '@/lib/constants';
+import { getOrdersCollectionPath, getListingsCollectionPath } from '@/lib/constants';
 import AuthGuard from '@/components/AuthGuard';
 import RatingModal from '@/components/RatingModal';
 import Link from 'next/link';
@@ -31,6 +31,7 @@ function OrdersContent() {
   const [counterpartyProfiles, setCounterpartyProfiles] = useState<Record<string, UserProfile>>({});
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState<'reserved' | 'completed' | 'cancelled'>('reserved');
+  const [completingId, setCompletingId] = useState<string | null>(null);
   const [profileDropdownOpen, setProfileDropdownOpen] = useState(false);
   const [ratingModalOpen, setRatingModalOpen] = useState(false);
   const [selectedOrderForRating, setSelectedOrderForRating] = useState<MarketplaceOrder | null>(null);
@@ -116,8 +117,40 @@ function OrdersContent() {
     };
   }, [orders, userProfile?.role, counterpartyProfiles]);
 
-  const markCompleted = async (_orderId: string) => {
-    toast.success('Order marked as completed');
+  // Generator confirms the handover happened. Atomically flip both the order and
+  // its source listing to 'completed' so the lifecycle (live → reserved → completed)
+  // is consistent for both parties and the listing can't be browsed/reserved again.
+  const markCompleted = async (order: MarketplaceOrder) => {
+    if (order.status !== 'reserved') return;
+    setCompletingId(order.id);
+    try {
+      const db = getFirestoreDb();
+      const orderRef = doc(db, getOrdersCollectionPath(), order.id);
+      const listingRef = doc(db, getListingsCollectionPath(), order.listingId);
+      await runTransaction(db, async (tx) => {
+        const orderSnap = await tx.get(orderRef);
+        if (!orderSnap.exists()) throw new Error('Order not found');
+        const cur = orderSnap.data() as MarketplaceOrder;
+        if (cur.status !== 'reserved') throw new Error('Order is no longer reservable');
+
+        tx.update(orderRef, { status: 'completed', completedAt: Timestamp.now() });
+
+        // Listing may have been removed; only update it if it still exists.
+        const listingSnap = await tx.get(listingRef);
+        if (listingSnap.exists()) {
+          const listing = listingSnap.data() as MarketplaceListing;
+          if (listing.status === 'reserved') {
+            tx.update(listingRef, { status: 'completed', completedAt: Timestamp.now() });
+          }
+        }
+      });
+      toast.success('Order marked as collected');
+    } catch (e: any) {
+      console.error(e);
+      toast.error(e.message || 'Failed to mark order as collected');
+    } finally {
+      setCompletingId(null);
+    }
   };
 
   if (loading) {
@@ -190,7 +223,8 @@ function OrdersContent() {
                 order={order}
                 idx={idx + 1}
                 role={role}
-                onMarkCompleted={() => markCompleted(order.id)}
+                completing={completingId === order.id}
+                onMarkCompleted={() => markCompleted(order)}
                 onRate={() => { setSelectedOrderForRating(order); setRatingModalOpen(true); }}
               />
             ))}
@@ -268,8 +302,8 @@ function OrderStatusPill({ status }: { status: string }) {
   );
 }
 
-function OrderRow({ order, idx, role, onMarkCompleted, onRate }: {
-  order: MarketplaceOrder; idx: number; role?: MarketplaceRole; onMarkCompleted: () => void; onRate: () => void;
+function OrderRow({ order, idx, role, completing, onMarkCompleted, onRate }: {
+  order: MarketplaceOrder; idx: number; role?: MarketplaceRole; completing: boolean; onMarkCompleted: () => void; onRate: () => void;
 }) {
   const num = String(idx).padStart(2, '0');
   const dim = order.status === 'completed' || order.status === 'cancelled';
@@ -321,14 +355,19 @@ function OrderRow({ order, idx, role, onMarkCompleted, onRate }: {
 
             {role === 'generator' && order.status === 'reserved' && (
               <button onClick={onMarkCompleted}
-                      className="group inline-flex items-center gap-3 pl-5 pr-1.5 h-11 rounded-full font-mono-jb text-[11px] uppercase tracking-[0.25em] transition-all hover:-translate-y-0.5"
+                      disabled={completing}
+                      className="group inline-flex items-center gap-3 pl-5 pr-1.5 h-11 rounded-full font-mono-jb text-[11px] uppercase tracking-[0.25em] transition-all hover:-translate-y-0.5 disabled:opacity-50 disabled:cursor-not-allowed"
                       style={{ background: 'var(--rf-sap)', color: 'var(--rf-forest)' }}>
-                <span>Mark collected</span>
+                <span>{completing ? 'Marking…' : 'Mark collected'}</span>
                 <span className="flex items-center justify-center size-8 rounded-full transition-transform group-hover:rotate-45"
                       style={{ background: 'var(--rf-forest)', color: 'var(--rf-sap)' }}>
-                  <svg viewBox="0 0 24 24" className="size-3.5" fill="none" stroke="currentColor" strokeWidth="2.5">
-                    <path d="M5 13l4 4L19 7" strokeLinecap="round" strokeLinejoin="round" />
-                  </svg>
+                  {completing ? (
+                    <span className="size-3.5 border-2 border-current border-t-transparent rounded-full animate-spin" />
+                  ) : (
+                    <svg viewBox="0 0 24 24" className="size-3.5" fill="none" stroke="currentColor" strokeWidth="2.5">
+                      <path d="M5 13l4 4L19 7" strokeLinecap="round" strokeLinejoin="round" />
+                    </svg>
+                  )}
                 </span>
               </button>
             )}
