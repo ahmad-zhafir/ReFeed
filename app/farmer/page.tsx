@@ -562,12 +562,17 @@ function SpecimenCard({
             ✓ Verified
           </span>
           {generatorProfile?.averageRating && generatorProfile.averageRating > 0 && (
-            <div className="px-2 py-1 rounded backdrop-blur-sm border"
-                 style={{ background: 'rgba(13,26,16,.65)', borderColor: 'rgba(241,234,216,.15)' }}>
+            <Link
+              href={`/farmer/vendors/${listing.generatorUid}`}
+              onClick={(e) => e.stopPropagation()}
+              aria-label={`View rating details for ${generatorProfile.name || 'this vendor'}`}
+              className="px-2 py-1 rounded backdrop-blur-sm border transition-all hover:-translate-y-0.5 hover:bg-white/5"
+              style={{ background: 'rgba(13,26,16,.65)', borderColor: 'rgba(241,234,216,.15)' }}
+            >
               <RatingDisplay rating={generatorProfile.averageRating}
                              totalRatings={generatorProfile.totalRatings}
                              size="sm" showCount={false} />
-            </div>
+            </Link>
           )}
         </div>
 

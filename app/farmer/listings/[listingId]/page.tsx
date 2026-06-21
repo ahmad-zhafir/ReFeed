@@ -8,6 +8,7 @@ import { MarketplaceListing, UserProfile } from '@/lib/types';
 import { getUserProfile } from '@/lib/userProfile';
 import { getListingsCollectionPath } from '@/lib/constants';
 import RoleGuard from '@/components/RoleGuard';
+import RatingDisplay from '@/components/RatingDisplay';
 import Link from 'next/link';
 import toast from 'react-hot-toast';
 import { FarmerHeader } from '@/components/FarmerHeader';
@@ -38,6 +39,7 @@ function ListingDetailContent() {
 
   const [listing, setListing] = useState<MarketplaceListing | null>(null);
   const [userProfile, setUserProfile] = useState<UserProfile | null>(null);
+  const [vendorProfile, setVendorProfile] = useState<UserProfile | null>(null);
   const [loading, setLoading] = useState(true);
   const [distance, setDistance] = useState<number | null>(null);
   const [selectedImageIndex, setSelectedImageIndex] = useState(0);
@@ -76,6 +78,10 @@ function ListingDetailContent() {
       }
       const data = { id: ld.id, ...ld.data() } as MarketplaceListing;
       setListing(data);
+      if (data.generatorUid) {
+        const generator = await getUserProfile(data.generatorUid);
+        setVendorProfile(generator);
+      }
       if (profile?.location?.latitude && profile?.location?.longitude) {
         setDistance(calculateDistance(
           profile.location.latitude, profile.location.longitude,
@@ -261,9 +267,32 @@ function ListingDetailContent() {
 
               {listing.generatorName && (
                 <SpecRow label="04 · Kitchen">
-                  <p className="font-instrument italic text-xl" style={{ color: 'var(--rf-bone)' }}>
-                    {listing.generatorName}
-                  </p>
+                  <div className="flex flex-wrap items-center gap-3">
+                    <p className="font-instrument italic text-xl" style={{ color: 'var(--rf-bone)' }}>
+                      {listing.generatorName}
+                    </p>
+                    {vendorProfile?.averageRating && vendorProfile.averageRating > 0 ? (
+                      <Link
+                        href={`/farmer/vendors/${listing.generatorUid}`}
+                        className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full border transition-all hover:bg-white/5"
+                        style={{ borderColor: 'rgba(241,234,216,.2)' }}
+                      >
+                        <RatingDisplay
+                          rating={vendorProfile.averageRating}
+                          totalRatings={vendorProfile.totalRatings}
+                          size="sm"
+                          showCount={false}
+                        />
+                      </Link>
+                    ) : (
+                      <Link
+                        href={`/farmer/vendors/${listing.generatorUid}`}
+                        className="font-mono-jb text-[10px] uppercase tracking-[0.22em] opacity-70 hover:opacity-100 hover:text-[color:var(--rf-sap)] transition-colors"
+                      >
+                        View vendor rating
+                      </Link>
+                    )}
+                  </div>
                 </SpecRow>
               )}
             </div>
