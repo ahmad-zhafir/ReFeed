@@ -6,12 +6,7 @@ import { Listing } from '@/lib/types';
 
 const mapContainerStyle = {
   width: '100%',
-  height: '100%',
-  // Fix blurry text issue
-  transform: 'translateZ(0)',
-  WebkitTransform: 'translateZ(0)',
-  backfaceVisibility: 'hidden' as const,
-  WebkitBackfaceVisibility: 'hidden' as const,
+  height: 'calc(100vh - 113px)',
 };
 
 // Default center: Malaysia (Kuala Lumpur)
@@ -44,9 +39,11 @@ export default function MapView({ listings, onClaimListing, selectedListingId, o
     googleMapsApiKey: apiKey,
   });
 
+  const isVisibleListing = (listing: Listing) => listing.status === 'active' || (listing as any).status === 'live';
+
   useEffect(() => {
-    // Center map on first active listing if available, otherwise use Malaysia default
-    const activeListings = listings.filter(l => l.status === 'active');
+    // Center map on first active/live listing if available, otherwise use Malaysia default
+    const activeListings = listings.filter(isVisibleListing);
     if (activeListings.length > 0 && !selectedListingId) {
       setMapCenter({
         lat: activeListings[0].latitude,
@@ -139,7 +136,7 @@ export default function MapView({ listings, onClaimListing, selectedListingId, o
     );
   }
 
-  const activeListings = listings.filter((listing) => listing.status === 'active');
+  const activeListings = listings.filter(isVisibleListing);
 
   // Listing pins use the editorial sap accent (selected = bright sap, default = sap-deep).
   // SVG fills can't read CSS vars at runtime, so the hex values are resolved from the
@@ -183,115 +180,120 @@ export default function MapView({ listings, onClaimListing, selectedListingId, o
   };
 
   return (
+    <div className="relative w-full h-full min-h-full">
       <GoogleMap
         key={mapKey ? `map-${mapKey}` : undefined}
         mapContainerStyle={mapContainerStyle}
         center={mapCenter}
         zoom={mapZoom}
-      onLoad={(map) => {
-        mapRef.current = map;
-        setIsMapLoaded(true);
-        // Force a resize to ensure map renders correctly
-        setTimeout(() => {
-          if (map) {
-            google.maps.event.trigger(map, 'resize');
-          }
-        }, 100);
-      }}
-    >
-      {activeListings.map((listing) => (
-        <Marker
-          key={listing.id}
-          position={{
-            lat: listing.latitude,
-            lng: listing.longitude,
-          }}
-          icon={createCustomIcon(selectedListingId === listing.id)}
-          onClick={() => {
-            setSelectedListing(listing);
-            onListingSelect?.(listing);
-          }}
-        />
-      ))}
+        onLoad={(map) => {
+          mapRef.current = map;
+          setIsMapLoaded(true);
+          // Force a resize to ensure map renders correctly
+          setTimeout(() => {
+            if (map) {
+              google.maps.event.trigger(map, 'resize');
+            }
+          }, 100);
+        }}
+      >
+        {activeListings.map((listing) => (
+          <Marker
+            key={listing.id}
+            position={{
+              lat: listing.latitude,
+              lng: listing.longitude,
+            }}
+            icon={createCustomIcon(selectedListingId === listing.id)}
+            onClick={() => {
+              setSelectedListing(listing);
+              onListingSelect?.(listing);
+            }}
+          />
+        ))}
 
-      {selectedListing && (
-        <InfoWindow
-          position={{
-            lat: selectedListing.latitude,
-            lng: selectedListing.longitude,
-          }}
-          onCloseClick={() => {
-            setSelectedListing(null);
-            onListingSelect?.(null);
-          }}
-        >
-          <div className="p-2 max-w-xs">
-            <h3 className="font-bold text-lg mb-2 text-gray-900">{selectedListing.title}</h3>
-            <p className="text-sm text-gray-600 mb-1">
-              <strong>Available:</strong> {selectedListing.remaining_quantity || selectedListing.quantity}
-            </p>
-            {selectedListing.remaining_quantity && selectedListing.quantity !== selectedListing.remaining_quantity && (
-              <p className="text-xs text-gray-500 mb-1">
-                <strong>Original:</strong> {selectedListing.quantity}
+        {selectedListing && (
+          <InfoWindow
+            position={{
+              lat: selectedListing.latitude,
+              lng: selectedListing.longitude,
+            }}
+            onCloseClick={() => {
+              setSelectedListing(null);
+              onListingSelect?.(null);
+            }}
+          >
+            <div className="p-2 max-w-xs">
+              <h3 className="font-bold text-lg mb-2 text-gray-900">{selectedListing.title}</h3>
+              <p className="text-sm text-gray-600 mb-1">
+                <strong>Available:</strong> {selectedListing.remaining_quantity || selectedListing.quantity}
               </p>
-            )}
-            <p className="text-sm text-gray-600 mb-1">
-              <strong>Address:</strong> {selectedListing.address}
-            </p>
-            {selectedListing.donor_name && (
-              <p className="text-xs text-gray-500 mb-1">
-                <strong>Donor:</strong> {selectedListing.donor_name}
-                {selectedListing.donor_contact && ` (${selectedListing.donor_contact})`}
-              </p>
-            )}
-            {selectedListing.image_url && (
-              <img
-                src={selectedListing.image_url}
-                alt={selectedListing.title}
-                className="w-full h-32 object-cover rounded mt-2 mb-2"
-              />
-            )}
-            <div className="flex gap-2 mt-2">
-              {(() => {
-                const isOwnDonation = selectedListing.donor_id === currentUserId;
-                const remainingNum = selectedListing.remaining_quantity 
-                  ? parseFloat(selectedListing.remaining_quantity.replace(/[^0-9.]/g, '')) || 0
-                  : 0;
-                const isFullyClaimed = remainingNum <= 0;
-                const isDisabled = isOwnDonation || isFullyClaimed;
-                
-                return (
-                  <button
-                    onClick={() => {
-                      onClaimListing(selectedListing);
-                      setSelectedListing(null);
-                    }}
-                    disabled={isDisabled}
-                    className={`flex-1 py-2 px-4 rounded-md ${
-                      isDisabled
-                        ? 'bg-gray-300 text-gray-500 cursor-not-allowed'
-                        : 'bg-blue-600 text-white hover:bg-blue-700'
-                    }`}
-                    title={isOwnDonation ? 'Cannot claim your own donation' : isFullyClaimed ? 'Fully claimed' : 'Claim this item'}
-                  >
-                    {isOwnDonation ? 'Your Donation' : isFullyClaimed ? 'Fully Claimed' : 'Claim This Item'}
-                  </button>
-                );
-              })()}
-              {onGetDirections && (
-                <button
-                  onClick={() => onGetDirections(selectedListing)}
-                  className="bg-green-600 text-white py-2 px-4 rounded-md hover:bg-green-700"
-                  title="Get Directions"
-                >
-                  🗺️
-                </button>
+              {selectedListing.remaining_quantity && selectedListing.quantity !== selectedListing.remaining_quantity && (
+                <p className="text-xs text-gray-500 mb-1">
+                  <strong>Original:</strong> {selectedListing.quantity}
+                </p>
               )}
+              <p className="text-sm text-gray-600 mb-1">
+                <strong>Address:</strong> {selectedListing.address}
+              </p>
+              {selectedListing.donor_name && (
+                <p className="text-xs text-gray-500 mb-1">
+                  <strong>Donor:</strong> {selectedListing.donor_name}
+                  {selectedListing.donor_contact && ` (${selectedListing.donor_contact})`}
+                </p>
+              )}
+              {selectedListing.image_url && (
+                <img
+                  src={selectedListing.image_url}
+                  alt={selectedListing.title}
+                  className="w-full h-32 object-cover rounded mt-2 mb-2"
+                />
+              )}
+              <div className="flex gap-2 mt-2">
+                {(() => {
+                  const listingStatus = (selectedListing as Listing & { status?: string }).status;
+                  const isOwnDonation = selectedListing.donor_id === currentUserId;
+                  const hasLegacyRemainingQuantity = typeof selectedListing.remaining_quantity === 'string' && selectedListing.remaining_quantity.trim().length > 0;
+                  const remainingNum = hasLegacyRemainingQuantity
+                    ? parseFloat(selectedListing.remaining_quantity!.replace(/[^0-9.]/g, '')) || 0
+                    : null;
+                  const isClosedStatus = listingStatus ? ['claimed', 'completed', 'cancelled', 'expired'].includes(listingStatus) : false;
+                  const isFullyClaimed = isClosedStatus || (remainingNum !== null && remainingNum <= 0 && !listingStatus);
+                  const isDisabled = isOwnDonation || isFullyClaimed;
+                  
+                  return (
+                    <button
+                      onClick={() => {
+                        onClaimListing(selectedListing);
+                        setSelectedListing(null);
+                      }}
+                      disabled={isDisabled}
+                      className={`flex-1 py-2 px-4 rounded-md ${
+                        isDisabled
+                          ? 'bg-gray-300 text-gray-500 cursor-not-allowed'
+                          : 'bg-blue-600 text-white hover:bg-blue-700'
+                      }`}
+                      title={isOwnDonation ? 'Cannot claim your own donation' : isFullyClaimed ? 'Fully claimed' : 'Claim this item'}
+                    >
+                      {isOwnDonation ? 'Your Donation' : isFullyClaimed ? 'Fully Claimed' : 'Claim This Item'}
+                    </button>
+                  );
+                })()}
+                {onGetDirections && (
+                  <button
+                    onClick={() => onGetDirections(selectedListing)}
+                    className="bg-green-600 text-white py-2 px-4 rounded-md hover:bg-green-700"
+                    title="Get Directions"
+                  >
+                    🗺️
+                  </button>
+                )}
+              </div>
             </div>
-          </div>
-        </InfoWindow>
-      )}
-    </GoogleMap>
+          </InfoWindow>
+        )}
+      </GoogleMap>
+    </div>
   );
 }
 

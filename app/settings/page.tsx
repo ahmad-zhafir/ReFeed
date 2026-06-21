@@ -30,8 +30,10 @@ function SettingsContent() {
   const [latitude, setLatitude] = useState<number | null>(null);
   const [longitude, setLongitude] = useState<number | null>(null);
   const [address, setAddress] = useState('');
-  const [savingLocation, setSavingLocation] = useState(false);
   const [profileDropdownOpen, setProfileDropdownOpen] = useState(false);
+  const [name, setName] = useState('');
+  const [contact, setContact] = useState('');
+  const [errors, setErrors] = useState<{ name?: string; contact?: string; location?: string; radius?: string }>({});
   const addressInputRef = useRef<HTMLInputElement>(null);
   const autocompleteRef = useRef<google.maps.places.Autocomplete | null>(null);
   const dropdownRef = useRef<HTMLDivElement>(null);
@@ -53,6 +55,8 @@ function SettingsContent() {
         setUser(cu);
         const profile = await getUserProfile(cu.uid);
         setUserProfile(profile);
+        setName(profile?.name || '');
+        setContact(profile?.contact || '');
         if (profile?.searchRadiusKm) setSearchRadius(profile.searchRadiusKm);
         if (profile?.location) {
           setLatitude(profile.location.latitude);
@@ -81,6 +85,78 @@ function SettingsContent() {
       });
     }
   }, [isMapsLoaded, userProfile?.role]);
+
+  const validateProfile = () => {
+    const nextErrors: typeof errors = {};
+    const trimmedName = name.trim();
+    const trimmedContact = contact.trim();
+
+    if (!trimmedName) {
+      nextErrors.name = 'Name is required.';
+    }
+
+    if (!trimmedContact) {
+      nextErrors.contact = 'Contact number is required.';
+    } else if (!/^[+()0-9\s-]{7,}$/.test(trimmedContact)) {
+      nextErrors.contact = 'Contact number must contain valid digits and symbols only.';
+    }
+
+    if ((userProfile?.role === 'farmer' || userProfile?.role === 'generator') && (!latitude || !longitude)) {
+      nextErrors.location = 'Location is required for farmer and generator profiles.';
+    }
+
+    if (userProfile?.role === 'farmer' && (searchRadius < 1 || searchRadius > 50)) {
+      nextErrors.radius = 'Search radius must be between 1 and 50 km.';
+    }
+
+    setErrors(nextErrors);
+    return Object.keys(nextErrors).length === 0;
+  };
+
+  const handleSaveChanges = async () => {
+    if (!user || !userProfile) return;
+    if (!validateProfile()) {
+      toast.error('Please correct the highlighted fields.');
+      return;
+    }
+
+    setSaving(true);
+    try {
+      const updates: Partial<UserProfile> = {
+        name: name.trim(),
+        contact: contact.trim(),
+      };
+
+      if (userProfile.role === 'farmer' || userProfile.role === 'generator') {
+        updates.location = {
+          latitude: latitude!,
+          longitude: longitude!,
+          address: address || undefined,
+        };
+      }
+
+      if (userProfile.role === 'farmer') {
+        updates.searchRadiusKm = searchRadius;
+      }
+
+      await updateUserProfile(user.uid, updates);
+
+      setUserProfile((prev) => prev ? {
+        ...prev,
+        name: updates.name ?? prev.name,
+        contact: updates.contact ?? prev.contact,
+        location: updates.location ?? prev.location,
+        searchRadiusKm: updates.searchRadiusKm ?? prev.searchRadiusKm,
+      } : prev);
+
+      toast.success('Profile Updated Successfully');
+    } catch (e) {
+      console.error(e);
+      toast.error('Failed to save changes');
+    } finally {
+      setSaving(false);
+    }
+  };
 
   const useCurrentLocation = () => {
     if (!navigator.geolocation) { toast.error('Geolocation is not supported in this browser.'); return; }
@@ -122,28 +198,6 @@ function SettingsContent() {
         } else toast.error('Could not find coordinates');
       } else toast.error('Geocoding failed. Use GPS or map instead.');
     } catch (e) { console.error(e); toast.error('Geocoding failed.'); }
-  };
-
-  const handleSaveLocation = async () => {
-    if (!user || (userProfile?.role !== 'farmer' && userProfile?.role !== 'generator')) return;
-    if (!latitude || !longitude) { toast.error('Please set a location first'); return; }
-    setSavingLocation(true);
-    try {
-      await updateUserProfile(user.uid, { location: { latitude, longitude, address: address || undefined } });
-      setUserProfile({ ...userProfile!, location: { latitude, longitude, address: address || undefined } });
-      toast.success('Location saved successfully');
-    } catch (e) { console.error(e); toast.error('Failed to save location'); }
-    finally { setSavingLocation(false); }
-  };
-
-  const handleSaveRadius = async () => {
-    if (!user || userProfile?.role !== 'farmer') return;
-    setSaving(true);
-    try {
-      await updateUserProfile(user.uid, { searchRadiusKm: searchRadius });
-      toast.success('Settings saved');
-    } catch (e) { console.error(e); toast.error('Failed to save settings'); }
-    finally { setSaving(false); }
   };
 
   const handleMapClick = (e: google.maps.MapMouseEvent) => {
@@ -210,9 +264,25 @@ function SettingsContent() {
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
-              <ReadonlyField label="01 · Name"    value={userProfile?.name || ''} />
-              <ReadonlyField label="02 · Email"   value={userProfile?.email || ''} />
-              <ReadonlyField label="03 · Contact" value={userProfile?.contact || ''} />
+              <EditableField label="01 · Name" hint="Required" error={errors.name}>
+                <input
+                  type="text"
+                  value={name}
+                  onChange={(e) => setName(e.target.value)}
+                  className="rf-input w-full h-12 px-4"
+                  placeholder="Jane Harvest"
+                />
+              </EditableField>
+              <ReadonlyField label="02 · Email" value={userProfile?.email || ''} />
+              <EditableField label="03 · Contact" hint="Required" error={errors.contact}>
+                <input
+                  type="tel"
+                  value={contact}
+                  onChange={(e) => setContact(e.target.value)}
+                  className="rf-input w-full h-12 px-4"
+                  placeholder="+60 12-345 6789"
+                />
+              </EditableField>
               <ReadonlyField
                 label="04 · Bench"
                 value={role === 'generator' ? 'Restaurant / Generator' : 'Farmer / Receiver'}
@@ -242,6 +312,7 @@ function SettingsContent() {
                 <input ref={addressInputRef} type="text" value={address}
                        onChange={(e) => {
                          setAddress(e.target.value);
+                         setErrors((prev) => ({ ...prev, location: undefined }));
                          if (!autocompleteRef.current?.getPlace()) { setLatitude(null); setLongitude(null); }
                        }}
                        onBlur={() => { if (address && !latitude && !longitude) geocodeAddress(address); }}
@@ -258,6 +329,12 @@ function SettingsContent() {
               {latitude && longitude && (
                 <p className="font-mono-jb text-[10px] uppercase tracking-[0.22em] mb-3" style={{ color: 'var(--rf-sap)' }}>
                   ✓ Coordinates · {latitude.toFixed(5)}, {longitude.toFixed(5)}
+                </p>
+              )}
+
+              {errors.location && (
+                <p className="mb-3 font-mono-jb text-[10px] uppercase tracking-[0.22em]" style={{ color: 'var(--rf-rust)' }}>
+                  {errors.location}
                 </p>
               )}
 
@@ -298,10 +375,10 @@ function SettingsContent() {
                 </div>
               )}
 
-              <button onClick={handleSaveLocation} disabled={savingLocation || !latitude || !longitude}
+              <button onClick={handleSaveChanges} disabled={saving}
                       className="w-full inline-flex items-center justify-center h-12 rounded-full font-mono-jb text-[11px] uppercase tracking-[0.25em] transition-all hover:-translate-y-0.5 disabled:opacity-50 disabled:cursor-not-allowed"
                       style={{ background: 'var(--rf-sap)', color: 'var(--rf-forest)' }}>
-                {savingLocation ? 'Planting your pin…' : 'Save location'}
+                {saving ? 'Saving changes…' : 'Save location'}
               </button>
             </section>
           )}
@@ -322,12 +399,20 @@ function SettingsContent() {
                   {searchRadius}<span className="font-mono-jb text-sm ml-1 not-italic opacity-70">km</span>
                 </span>
               </div>
+              {errors.radius && (
+                <p className="mb-3 font-mono-jb text-[10px] uppercase tracking-[0.22em]" style={{ color: 'var(--rf-rust)' }}>
+                  {errors.radius}
+                </p>
+              )}
 
               <div className="relative h-1.5 rounded-full mb-2" style={{ background: 'rgba(241,234,216,.1)' }}>
                 <div className="absolute left-0 top-0 h-full rounded-full transition-all"
                      style={{ width: `${((searchRadius - 1) / 49) * 100}%`, background: 'var(--rf-sap)' }} />
                 <input type="range" min={1} max={50} step={1} value={searchRadius}
-                       onChange={(e) => setSearchRadius(parseInt(e.target.value, 10))}
+                       onChange={(e) => {
+                         setSearchRadius(parseInt(e.target.value, 10));
+                         setErrors((prev) => ({ ...prev, radius: undefined }));
+                       }}
                        className="absolute inset-0 w-full h-full opacity-0 cursor-pointer" />
                 <div className="absolute top-1/2 -translate-y-1/2 size-4 rounded-full border-2 pointer-events-none"
                      style={{ left: `calc(${((searchRadius - 1) / 49) * 100}% - 8px)`, background: 'var(--rf-sap)', borderColor: 'var(--rf-forest)' }} />
@@ -335,14 +420,30 @@ function SettingsContent() {
               <div className="flex justify-between mb-5 font-mono-jb text-[9px] uppercase tracking-[0.2em] opacity-50">
                 <span>1km</span><span>50km</span>
               </div>
-
-              <button onClick={handleSaveRadius} disabled={saving}
-                      className="w-full inline-flex items-center justify-center h-12 rounded-full font-mono-jb text-[11px] uppercase tracking-[0.25em] transition-all hover:-translate-y-0.5 disabled:opacity-50 disabled:cursor-not-allowed"
-                      style={{ background: 'var(--rf-sap)', color: 'var(--rf-forest)' }}>
-                {saving ? 'Adjusting orbit…' : 'Save orbit'}
-              </button>
             </section>
           )}
+
+          <section className="rounded-2xl p-6 md:p-8 border mb-6 rf-fade-up"
+                   style={{ borderColor: 'rgba(241,234,216,.14)', background: 'rgba(241,234,216,.025)', animationDelay: '.3s' }}>
+            <div className="flex items-center justify-between gap-4 mb-4">
+              <div>
+                <p className="rf-eyebrow">07 · Save changes</p>
+                <p className="font-instrument italic text-base mt-1" style={{ color: 'rgba(241,234,216,.65)' }}>
+                  Update your details and save them to Firestore.
+                </p>
+              </div>
+              <span className="font-mono-jb text-[10px] uppercase tracking-[0.22em] opacity-50">UC-10</span>
+            </div>
+
+            <button
+              onClick={handleSaveChanges}
+              disabled={saving}
+              className="w-full inline-flex items-center justify-center h-12 rounded-full font-mono-jb text-[11px] uppercase tracking-[0.25em] transition-all hover:-translate-y-0.5 disabled:opacity-50 disabled:cursor-not-allowed"
+              style={{ background: 'var(--rf-sap)', color: 'var(--rf-forest)' }}
+            >
+              {saving ? 'Saving changes…' : 'Save Changes'}
+            </button>
+          </section>
 
           {/* Sign out */}
           <section className="rounded-2xl p-6 md:p-8 border rf-fade-up"
@@ -393,6 +494,33 @@ function ReadonlyField({ label, value, accent }: { label: string; value: string;
          style={{ color: accent ? 'var(--rf-sap)' : 'var(--rf-bone)' }}>
         {value || <span className="opacity-50 italic font-instrument">— not set —</span>}
       </p>
+    </div>
+  );
+}
+
+function EditableField({
+  label,
+  hint,
+  error,
+  children,
+}: {
+  label: string;
+  hint?: string;
+  error?: string;
+  children: React.ReactNode;
+}) {
+  return (
+    <div>
+      <div className="flex items-end justify-between mb-2">
+        <p className="rf-eyebrow">{label}</p>
+        {hint && <span className="font-mono-jb text-[9px] uppercase tracking-[0.22em] opacity-50">{hint}</span>}
+      </div>
+      {children}
+      {error && (
+        <p className="mt-2 font-mono-jb text-[10px] uppercase tracking-[0.18em]" style={{ color: 'var(--rf-rust)' }}>
+          {error}
+        </p>
+      )}
     </div>
   );
 }

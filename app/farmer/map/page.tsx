@@ -148,6 +148,7 @@ function FarmerMapContent() {
             if (m) router.push(`/farmer/listings/${m.id}`);
           }}
           currentUserId={user?.uid || null}
+          mapKey={filteredListings.length}
         />
       </div>
     </div>

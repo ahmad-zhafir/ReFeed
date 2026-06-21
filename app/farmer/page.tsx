@@ -3,7 +3,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import { getFirestoreDb, onAuthStateChange } from '@/lib/firebase';
-import { collection, query, where, onSnapshot } from 'firebase/firestore';
+import { collection, query, where, onSnapshot, doc } from 'firebase/firestore';
 import { User } from 'firebase/auth';
 import { UserProfile, MarketplaceListing, MarketplaceOrder } from '@/lib/types';
 import { getUserProfile, updateUserProfile } from '@/lib/userProfile';
@@ -106,9 +106,6 @@ function FarmerFeedContent() {
     const unsub = onAuthStateChange(async (cu) => {
       if (cu) {
         setUser(cu);
-        const profile = await getUserProfile(cu.uid);
-        setUserProfile(profile);
-        if (profile?.searchRadiusKm) setSearchRadius(profile.searchRadiusKm);
         setLoading(false);
       } else {
         router.push('/login');
@@ -116,6 +113,23 @@ function FarmerFeedContent() {
     });
     return () => unsub();
   }, [router]);
+
+  useEffect(() => {
+    if (!user) return;
+    const db = getFirestoreDb();
+    const userRef = doc(db, 'users', user.uid);
+    const unsub = onSnapshot(
+      userRef,
+      (snap) => {
+        if (!snap.exists()) return;
+        const profile = { id: snap.id, ...snap.data() } as UserProfile;
+        setUserProfile(profile);
+        if (profile.searchRadiusKm) setSearchRadius(profile.searchRadiusKm);
+      },
+      (err) => console.error('Failed to subscribe to user profile:', err),
+    );
+    return () => unsub();
+  }, [user]);
 
   useEffect(() => {
     const db = getFirestoreDb();

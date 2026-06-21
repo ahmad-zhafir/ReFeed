@@ -6,7 +6,6 @@ import { getFirestoreDb, onAuthStateChange } from '@/lib/firebase';
 import { collection, query, where, onSnapshot, doc, updateDoc, deleteDoc, getDoc } from 'firebase/firestore';
 import { User } from 'firebase/auth';
 import { UserProfile, MarketplaceListing, MarketplaceOrder, Rating } from '@/lib/types';
-import { getUserProfile } from '@/lib/userProfile';
 import { getListingsCollectionPath, getOrdersCollectionPath, getRatingsCollectionPath } from '@/lib/constants';
 import FarmerMapView from '@/components/FarmerMapView';
 import RatingDisplay from '@/components/RatingDisplay';
@@ -80,8 +79,6 @@ function GeneratorDashboardContent() {
     const unsubAuth = onAuthStateChange(async (currentUser) => {
       if (currentUser) {
         setUser(currentUser);
-        const profile = await getUserProfile(currentUser.uid);
-        setUserProfile(profile);
         setLoading(false);
       } else {
         router.push('/login');
@@ -89,6 +86,21 @@ function GeneratorDashboardContent() {
     });
     return () => unsubAuth();
   }, [router]);
+
+  useEffect(() => {
+    if (!user) return;
+    const db = getFirestoreDb();
+    const userRef = doc(db, 'users', user.uid);
+    const unsub = onSnapshot(
+      userRef,
+      (snap) => {
+        if (!snap.exists()) return;
+        setUserProfile({ id: snap.id, ...snap.data() } as UserProfile);
+      },
+      (err) => console.error('Failed to subscribe to generator profile:', err),
+    );
+    return () => unsub();
+  }, [user]);
 
   // Listings subscription — also auto-expires stale listings on each snapshot.
   useEffect(() => {
