@@ -6,7 +6,7 @@ import { getFirestoreDb, getFirebaseStorage, onAuthStateChange } from '@/lib/fir
 import { collection, addDoc, Timestamp } from 'firebase/firestore';
 import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
 import { User } from 'firebase/auth';
-import { UserProfile, MarketplacePickupWindow } from '@/lib/types';
+import { UserProfile, MarketplacePickupWindow, MarketplaceScheduleType } from '@/lib/types';
 import { getUserProfile } from '@/lib/userProfile';
 import { getListingsCollectionPath } from '@/lib/constants';
 import RoleGuard from '@/components/RoleGuard';
@@ -55,9 +55,7 @@ function NewListingContent() {
   const [latitude, setLatitude] = useState<number | null>(null);
   const [longitude, setLongitude] = useState<number | null>(null);
   const [pickupWindows, setPickupWindows] = useState<MarketplacePickupWindow[]>([]);
-  
-  // Schedule type: 'one-time' or 'recurring'
-  const [scheduleType, setScheduleType] = useState<'one-time' | 'recurring'>('one-time');
+  const [scheduleType, setScheduleType] = useState<MarketplaceScheduleType>('one-time');
   
   // One-time schedule
   const [newWindowStart, setNewWindowStart] = useState('');
@@ -256,9 +254,10 @@ function NewListingContent() {
         return;
       }
 
-      setPickupWindows([...pickupWindows, { start: newWindowStart, end: newWindowEnd }]);
+      setPickupWindows([{ start: newWindowStart, end: newWindowEnd }]);
       setNewWindowStart('');
       setNewWindowEnd('');
+      toast.success('Pickup window set');
     } else {
       // Recurring schedule
       if (recurringDays.length === 0) {
@@ -337,6 +336,20 @@ function NewListingContent() {
     }
   };
 
+  const switchScheduleType = (nextType: MarketplaceScheduleType) => {
+    if (nextType === scheduleType) return;
+
+    setScheduleType(nextType);
+    setPickupWindows([]);
+    setNewWindowStart('');
+    setNewWindowEnd('');
+    setRecurringDays([]);
+    setRecurringStartTime('');
+    setRecurringEndTime('');
+    setRecurringStartDate('');
+    setRecurringEndDate('');
+  };
+
   const toggleRecurringDay = (day: number) => {
     setRecurringDays(prev => 
       prev.includes(day) 
@@ -367,12 +380,82 @@ function NewListingContent() {
 
   const dayAbbr = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
 
+  const formatPickupWindow = (window: MarketplacePickupWindow) =>
+    `${new Date(window.start).toLocaleString([], { weekday: 'short', month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' })} - ${new Date(window.end).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })}`;
+
+  const buildRecurringPickupWindows = () => {
+    if (recurringDays.length === 0 || !recurringStartTime || !recurringEndTime || !recurringStartDate) {
+      return [] as MarketplacePickupWindow[];
+    }
+
+    if (recurringEndTime <= recurringStartTime) {
+      return [] as MarketplacePickupWindow[];
+    }
+
+    const startDate = new Date(recurringStartDate);
+    const now = new Date();
+    now.setHours(0, 0, 0, 0);
+    if (startDate < now) {
+      return [] as MarketplacePickupWindow[];
+    }
+
+    const endDate = recurringEndDate ? new Date(recurringEndDate) : null;
+    const generatedWindows: MarketplacePickupWindow[] = [];
+    const currentDate = new Date(startDate);
+    const maxDate = endDate || new Date(currentDate.getTime() + 84 * 24 * 60 * 60 * 1000);
+
+    while (currentDate <= maxDate && generatedWindows.length < 100) {
+      const dayOfWeek = currentDate.getDay();
+      if (recurringDays.includes(dayOfWeek)) {
+        const [startHours, startMinutes] = recurringStartTime.split(':').map(Number);
+        const [endHours, endMinutes] = recurringEndTime.split(':').map(Number);
+
+        const windowStart = new Date(currentDate);
+        windowStart.setHours(startHours, startMinutes, 0, 0);
+
+        const windowEnd = new Date(currentDate);
+        windowEnd.setHours(endHours, endMinutes, 0, 0);
+
+        if (windowStart >= new Date()) {
+          generatedWindows.push({
+            start: windowStart.toISOString(),
+            end: windowEnd.toISOString(),
+          });
+        }
+      }
+      currentDate.setDate(currentDate.getDate() + 1);
+    }
+
+    return generatedWindows;
+  };
+
+  const isOneTimeDraftValid = !!newWindowStart && !!newWindowEnd && new Date(newWindowStart) < new Date(newWindowEnd) && new Date(newWindowStart) >= new Date();
+  const isRecurringDraftValid =
+    recurringDays.length > 0 &&
+    !!recurringStartTime &&
+    !!recurringEndTime &&
+    !!recurringStartDate &&
+    recurringEndTime > recurringStartTime &&
+    new Date(recurringStartDate) >= new Date(new Date().setHours(0, 0, 0, 0));
+  const canPublishListing =
+    scheduleType === 'one-time'
+      ? isOneTimeDraftValid || pickupWindows.length === 1
+      : isRecurringDraftValid || pickupWindows.length > 0;
+
   const removePickupWindow = (index: number) => {
     setPickupWindows(pickupWindows.filter((_, i) => i !== index));
   };
 
   const handleSubmit = async () => {
-    if (!category || !title || !price || (!imageFile && imageFiles.length === 0) || !address || !latitude || !longitude || pickupWindows.length === 0) {
+    const windowsToSave =
+      scheduleType === 'one-time'
+        ? (pickupWindows[0] ? [pickupWindows[0]] : isOneTimeDraftValid ? [{ start: newWindowStart, end: newWindowEnd }] : [])
+        : pickupWindows.length > 0
+          ? pickupWindows
+          : buildRecurringPickupWindows();
+    const hasValidPickupWindows = scheduleType === 'one-time' ? windowsToSave.length === 1 : windowsToSave.length > 0;
+
+    if (!category || !title || !price || (!imageFile && imageFiles.length === 0) || !address || !latitude || !longitude || !hasValidPickupWindows) {
       toast.error('Please fill all required fields');
       return;
     }
@@ -414,7 +497,8 @@ function NewListingContent() {
         latitude,
         longitude,
         imageUrl,
-        pickupWindows,
+        pickupWindows: windowsToSave,
+        scheduleType,
         status: 'live', // Auto-approve
         createdAt: Timestamp.now(),
       };
@@ -874,7 +958,7 @@ function NewListingContent() {
                     <div className="flex gap-4">
                       <button
                         type="button"
-                        onClick={() => setScheduleType('one-time')}
+                        onClick={() => switchScheduleType('one-time')}
                         className={`flex-1 px-4 py-3 rounded-lg border-2 font-semibold transition-colors ${
                           scheduleType === 'one-time'
                             ? 'bg-[var(--rf-sap)] text-[var(--rf-ink)] border-[var(--rf-sap)]'
@@ -885,7 +969,7 @@ function NewListingContent() {
                       </button>
                       <button
                         type="button"
-                        onClick={() => setScheduleType('recurring')}
+                        onClick={() => switchScheduleType('recurring')}
                         className={`flex-1 px-4 py-3 rounded-lg border-2 font-semibold transition-colors ${
                           scheduleType === 'recurring'
                             ? 'bg-[var(--rf-sap)] text-[var(--rf-ink)] border-[var(--rf-sap)]'
@@ -899,7 +983,7 @@ function NewListingContent() {
 
                   <div className="space-y-4">
                     {scheduleType === 'one-time' ? (
-                      <>
+                      <div className="space-y-4">
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                           <div className="flex flex-col gap-2">
                             <label className="text-[var(--rf-bone)] text-base font-medium leading-normal">Start Date & Time *</label>
@@ -913,7 +997,7 @@ function NewListingContent() {
                                   setNewWindowEnd('');
                                 }
                               }}
-                              className="w-full rounded-lg bg-[var(--rf-forest)] border border-[rgba(241,234,216,0.18)] text-[var(--rf-bone)] h-14 px-4 focus:outline-none focus:ring-2 focus:ring-[var(--rf-sap)] focus:border-transparent transition-all"
+                              className="rf-calendar-bone w-full rounded-lg bg-[var(--rf-forest)] border border-[rgba(241,234,216,0.18)] text-[var(--rf-bone)] h-14 px-4 focus:outline-none focus:ring-2 focus:ring-[var(--rf-sap)] focus:border-transparent transition-all"
                             />
                             <p className="text-xs text-[var(--rf-bone)]/60 pl-1">Must be today or in the future</p>
                           </div>
@@ -924,7 +1008,7 @@ function NewListingContent() {
                               value={newWindowEnd}
                               min={newWindowStart || getMinDateTime()}
                               onChange={(e) => setNewWindowEnd(e.target.value)}
-                              className="w-full rounded-lg bg-[var(--rf-forest)] border border-[rgba(241,234,216,0.18)] text-[var(--rf-bone)] h-14 px-4 focus:outline-none focus:ring-2 focus:ring-[var(--rf-sap)] focus:border-transparent transition-all disabled:opacity-50"
+                              className="rf-calendar-bone w-full rounded-lg bg-[var(--rf-forest)] border border-[rgba(241,234,216,0.18)] text-[var(--rf-bone)] h-14 px-4 focus:outline-none focus:ring-2 focus:ring-[var(--rf-sap)] focus:border-transparent transition-all disabled:opacity-50"
                               disabled={!newWindowStart}
                             />
                             <p className="text-xs text-[var(--rf-bone)]/60 pl-1">
@@ -938,7 +1022,8 @@ function NewListingContent() {
                         {newWindowStart && new Date(newWindowStart) < new Date() && (
                           <p className="text-sm text-red-400">⚠️ Start time cannot be in the past</p>
                         )}
-                      </>
+                        
+                      </div>
                     ) : (
                       <>
                         <div className="flex flex-col gap-2">
@@ -974,7 +1059,7 @@ function NewListingContent() {
                                   setRecurringEndTime('');
                                 }
                               }}
-                              className="w-full rounded-lg bg-[var(--rf-forest)] border border-[rgba(241,234,216,0.18)] text-[var(--rf-bone)] h-14 px-4 focus:outline-none focus:ring-2 focus:ring-[var(--rf-sap)] focus:border-transparent transition-all"
+                              className="rf-calendar-bone w-full rounded-lg bg-[var(--rf-forest)] border border-[rgba(241,234,216,0.18)] text-[var(--rf-bone)] h-14 px-4 focus:outline-none focus:ring-2 focus:ring-[var(--rf-sap)] focus:border-transparent transition-all"
                             />
                           </div>
                           <div className="flex flex-col gap-2">
@@ -984,7 +1069,7 @@ function NewListingContent() {
                               value={recurringEndTime}
                               min={recurringStartTime}
                               onChange={(e) => setRecurringEndTime(e.target.value)}
-                              className="w-full rounded-lg bg-[var(--rf-forest)] border border-[rgba(241,234,216,0.18)] text-[var(--rf-bone)] h-14 px-4 focus:outline-none focus:ring-2 focus:ring-[var(--rf-sap)] focus:border-transparent transition-all disabled:opacity-50"
+                              className="rf-calendar-bone w-full rounded-lg bg-[var(--rf-forest)] border border-[rgba(241,234,216,0.18)] text-[var(--rf-bone)] h-14 px-4 focus:outline-none focus:ring-2 focus:ring-[var(--rf-sap)] focus:border-transparent transition-all disabled:opacity-50"
                               disabled={!recurringStartTime}
                             />
                           </div>
@@ -1006,7 +1091,7 @@ function NewListingContent() {
                                   setRecurringEndDate('');
                                 }
                               }}
-                              className="w-full rounded-lg bg-[var(--rf-forest)] border border-[rgba(241,234,216,0.18)] text-[var(--rf-bone)] h-14 px-4 focus:outline-none focus:ring-2 focus:ring-[var(--rf-sap)] focus:border-transparent transition-all"
+                              className="rf-calendar-bone w-full rounded-lg bg-[var(--rf-forest)] border border-[rgba(241,234,216,0.18)] text-[var(--rf-bone)] h-14 px-4 focus:outline-none focus:ring-2 focus:ring-[var(--rf-sap)] focus:border-transparent transition-all"
                             />
                             <p className="text-xs text-[var(--rf-bone)]/60 pl-1">When recurring schedule begins</p>
                           </div>
@@ -1017,7 +1102,7 @@ function NewListingContent() {
                               value={recurringEndDate}
                               min={recurringStartDate || getMinDate()}
                               onChange={(e) => setRecurringEndDate(e.target.value)}
-                              className="w-full rounded-lg bg-[var(--rf-forest)] border border-[rgba(241,234,216,0.18)] text-[var(--rf-bone)] h-14 px-4 focus:outline-none focus:ring-2 focus:ring-[var(--rf-sap)] focus:border-transparent transition-all disabled:opacity-50"
+                              className="rf-calendar-bone w-full rounded-lg bg-[var(--rf-forest)] border border-[rgba(241,234,216,0.18)] text-[var(--rf-bone)] h-14 px-4 focus:outline-none focus:ring-2 focus:ring-[var(--rf-sap)] focus:border-transparent transition-all disabled:opacity-50"
                               disabled={!recurringStartDate}
                             />
                             <p className="text-xs text-[var(--rf-bone)]/60 pl-1">Leave empty for ongoing schedule (max 12 weeks)</p>
@@ -1026,19 +1111,10 @@ function NewListingContent() {
                       </>
                     )}
 
-                    <button
-                      onClick={addPickupWindow}
-                      className="w-full px-4 py-2.5 bg-[var(--rf-sap)] hover:bg-[var(--rf-sap-bright)] text-[var(--rf-ink)] rounded-lg font-bold transition-all shadow-[0_0_15px_rgba(200,255,77,0.3)]"
-                    >
-                      {scheduleType === 'one-time' ? 'Add Window' : 'Generate Recurring Windows'}
-                    </button>
-
-                    {pickupWindows.length > 0 && (
+                    {scheduleType === 'recurring' && pickupWindows.length > 0 && (
                       <div className="mt-4">
                         <div className="flex justify-between items-center mb-2">
-                          <h3 className="text-sm font-semibold text-[var(--rf-bone)]">
-                            Added Windows ({pickupWindows.length})
-                          </h3>
+                          <h3 className="text-sm font-semibold text-[var(--rf-bone)]">Added Windows ({pickupWindows.length})</h3>
                           <button
                             onClick={() => setPickupWindows([])}
                             className="text-sm text-red-400 hover:text-red-300"
@@ -1050,7 +1126,7 @@ function NewListingContent() {
                           {pickupWindows.map((window, index) => (
                             <div key={index} className="flex justify-between items-center p-3 bg-[var(--rf-forest)] rounded-lg">
                               <span className="text-sm text-[var(--rf-bone)]">
-                                {new Date(window.start).toLocaleString()} - {new Date(window.end).toLocaleString()}
+                                {formatPickupWindow(window)}
                               </span>
                               <button
                                 onClick={() => removePickupWindow(index)}
@@ -1061,6 +1137,12 @@ function NewListingContent() {
                             </div>
                           ))}
                         </div>
+                        <button
+                          onClick={addPickupWindow}
+                          className="w-full px-4 py-2.5 bg-[var(--rf-sap)] hover:bg-[var(--rf-sap-bright)] text-[var(--rf-ink)] rounded-lg font-bold transition-all shadow-[0_0_15px_rgba(200,255,77,0.3)]"
+                        >
+                          Generate Recurring Windows
+                        </button>
                       </div>
                     )}
                   </div>
@@ -1109,7 +1191,7 @@ function NewListingContent() {
                 ) : (
                   <button
                     onClick={handleSubmit}
-                    disabled={submitting || pickupWindows.length === 0}
+                    disabled={submitting || !canPublishListing}
                     className="flex-1 h-12 rounded-lg bg-[var(--rf-sap)] text-[var(--rf-ink)] font-bold hover:bg-[var(--rf-sap-bright)] transition-colors flex items-center justify-center gap-2 shadow-[0_0_20px_rgba(200,255,77,0.3)] disabled:opacity-50"
                   >
                     {submitting ? 'Publishing...' : 'Publish Listing'}

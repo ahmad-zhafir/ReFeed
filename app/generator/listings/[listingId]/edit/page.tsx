@@ -6,7 +6,7 @@ import { getFirestoreDb, getFirebaseStorage, onAuthStateChange } from '@/lib/fir
 import { doc, getDoc, updateDoc } from 'firebase/firestore';
 import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
 import { User } from 'firebase/auth';
-import { MarketplaceListing, MarketplacePickupWindow } from '@/lib/types';
+import { MarketplaceListing, MarketplacePickupWindow, MarketplaceScheduleType } from '@/lib/types';
 import { getListingsCollectionPath } from '@/lib/constants';
 import RoleGuard from '@/components/RoleGuard';
 import Link from 'next/link';
@@ -56,7 +56,7 @@ function EditListingContent() {
   const [longitude, setLongitude] = useState<number | null>(null);
   const [pickupWindows, setPickupWindows] = useState<MarketplacePickupWindow[]>([]);
   
-  const [scheduleType, setScheduleType] = useState<'one-time' | 'recurring'>('one-time');
+  const [scheduleType, setScheduleType] = useState<MarketplaceScheduleType>('one-time');
   const [newWindowStart, setNewWindowStart] = useState('');
   const [newWindowEnd, setNewWindowEnd] = useState('');
   const [recurringDays, setRecurringDays] = useState<number[]>([]);
@@ -127,6 +127,7 @@ function EditListingContent() {
       setLatitude(listingData.latitude);
       setLongitude(listingData.longitude);
       setPickupWindows(listingData.pickupWindows || []);
+      setScheduleType(listingData.scheduleType || ((listingData.pickupWindows?.length || 0) > 1 ? 'recurring' : 'one-time'));
 
       setLoading(false);
     } catch (error) {
@@ -258,7 +259,8 @@ function EditListingContent() {
         return;
       }
 
-      setPickupWindows([...pickupWindows, { start: newWindowStart, end: newWindowEnd }]);
+      setPickupWindows([{ start: newWindowStart, end: newWindowEnd }]);
+      toast.success('Pickup window set');
       setNewWindowStart('');
       setNewWindowEnd('');
     } else {
@@ -331,6 +333,20 @@ function EditListingContent() {
     }
   };
 
+  const switchScheduleType = (nextType: MarketplaceScheduleType) => {
+    if (nextType === scheduleType) return;
+
+    setScheduleType(nextType);
+    setPickupWindows([]);
+    setNewWindowStart('');
+    setNewWindowEnd('');
+    setRecurringDays([]);
+    setRecurringStartTime('');
+    setRecurringEndTime('');
+    setRecurringStartDate('');
+    setRecurringEndDate('');
+  };
+
   const toggleRecurringDay = (day: number) => {
     setRecurringDays(prev => 
       prev.includes(day) 
@@ -360,12 +376,72 @@ function EditListingContent() {
   const dayNames = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
   const dayAbbr = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
 
+  const formatPickupWindow = (window: MarketplacePickupWindow) =>
+    `${new Date(window.start).toLocaleString([], { weekday: 'short', month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' })} - ${new Date(window.end).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })}`;
+
+  const buildRecurringPickupWindows = () => {
+    if (recurringDays.length === 0 || !recurringStartTime || !recurringEndTime || !recurringStartDate) {
+      return [] as MarketplacePickupWindow[];
+    }
+
+    if (recurringEndTime <= recurringStartTime) {
+      return [] as MarketplacePickupWindow[];
+    }
+
+    const startDate = new Date(recurringStartDate);
+    const now = new Date();
+    now.setHours(0, 0, 0, 0);
+    if (startDate < now) {
+      return [] as MarketplacePickupWindow[];
+    }
+
+    const endDate = recurringEndDate ? new Date(recurringEndDate) : null;
+    const generatedWindows: MarketplacePickupWindow[] = [];
+    const currentDate = new Date(startDate);
+    const maxDate = endDate || new Date(currentDate.getTime() + 84 * 24 * 60 * 60 * 1000);
+
+    while (currentDate <= maxDate && generatedWindows.length < 100) {
+      const dayOfWeek = currentDate.getDay();
+      if (recurringDays.includes(dayOfWeek)) {
+        const [startHours, startMinutes] = recurringStartTime.split(':').map(Number);
+        const [endHours, endMinutes] = recurringEndTime.split(':').map(Number);
+
+        const windowStart = new Date(currentDate);
+        windowStart.setHours(startHours, startMinutes, 0, 0);
+
+        const windowEnd = new Date(currentDate);
+        windowEnd.setHours(endHours, endMinutes, 0, 0);
+
+        if (windowStart >= new Date()) {
+          generatedWindows.push({
+            start: windowStart.toISOString(),
+            end: windowEnd.toISOString(),
+          });
+        }
+      }
+      currentDate.setDate(currentDate.getDate() + 1);
+    }
+
+    return generatedWindows;
+  };
+
+  const formatPickupWindow = (window: MarketplacePickupWindow) =>
+    `${new Date(window.start).toLocaleString([], { weekday: 'short', month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' })} - ${new Date(window.end).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })}`;
+
   const removePickupWindow = (index: number) => {
     setPickupWindows(pickupWindows.filter((_, i) => i !== index));
   };
 
   const handleSubmit = async () => {
-    if (!category || !title || !price || !address || !latitude || !longitude || pickupWindows.length === 0) {
+    const windowsToSave =
+      scheduleType === 'one-time'
+        ? (pickupWindows[0] ? [pickupWindows[0]] : newWindowStart && newWindowEnd && new Date(newWindowStart) < new Date(newWindowEnd) && new Date(newWindowStart) >= new Date() ? [{ start: newWindowStart, end: newWindowEnd }] : [])
+        : pickupWindows.length > 0
+          ? pickupWindows
+          : buildRecurringPickupWindows();
+    const hasValidPickupWindows = scheduleType === 'one-time' ? windowsToSave.length === 1 : windowsToSave.length > 0;
+
+    if (!category || !title || !price || !address || !latitude || !longitude || !hasValidPickupWindows) {
       toast.error('Please fill all required fields');
       return;
     }
@@ -399,7 +475,8 @@ function EditListingContent() {
         latitude,
         longitude,
         imageUrl,
-        pickupWindows,
+        pickupWindows: windowsToSave,
+        scheduleType,
       };
 
       if (weightKg) {
@@ -710,7 +787,7 @@ function EditListingContent() {
                     <div className="grid grid-cols-2 gap-4">
                       <button
                         type="button"
-                        onClick={() => setScheduleType('one-time')}
+                        onClick={() => switchScheduleType('one-time')}
                         className={`p-4 rounded-lg border-2 transition-all ${
                           scheduleType === 'one-time'
                             ? 'border-[var(--rf-sap)] bg-[var(--rf-sap)]/10'
@@ -722,7 +799,7 @@ function EditListingContent() {
                       </button>
                       <button
                         type="button"
-                        onClick={() => setScheduleType('recurring')}
+                        onClick={() => switchScheduleType('recurring')}
                         className={`p-4 rounded-lg border-2 transition-all ${
                           scheduleType === 'recurring'
                             ? 'border-[var(--rf-sap)] bg-[var(--rf-sap)]/10'
@@ -736,26 +813,43 @@ function EditListingContent() {
                   </div>
 
                   {scheduleType === 'one-time' ? (
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                      <div className="flex flex-col gap-2">
-                        <label className="text-[var(--rf-bone)] text-sm font-medium">Start Date & Time</label>
-                        <input
-                          type="datetime-local"
-                          value={newWindowStart}
-                          onChange={(e) => setNewWindowStart(e.target.value)}
-                          min={getMinDateTime()}
-                          className="w-full rounded-lg bg-[var(--rf-forest)] border border-[rgba(241,234,216,0.18)] text-[var(--rf-bone)] h-12 px-4 focus:outline-none focus:ring-2 focus:ring-[var(--rf-sap)] focus:border-transparent transition-all"
-                        />
+                    <div className="space-y-4">
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div className="flex flex-col gap-2">
+                          <label className="text-[var(--rf-bone)] text-sm font-medium">Start Date & Time</label>
+                          <input
+                            type="datetime-local"
+                            value={newWindowStart}
+                            onChange={(e) => setNewWindowStart(e.target.value)}
+                            min={getMinDateTime()}
+                            className="w-full rounded-lg bg-[var(--rf-forest)] border border-[rgba(241,234,216,0.18)] text-[var(--rf-bone)] h-12 px-4 focus:outline-none focus:ring-2 focus:ring-[var(--rf-sap)] focus:border-transparent transition-all"
+                          />
+                        </div>
+                        <div className="flex flex-col gap-2">
+                          <label className="text-[var(--rf-bone)] text-sm font-medium">End Date & Time</label>
+                          <input
+                            type="datetime-local"
+                            value={newWindowEnd}
+                            onChange={(e) => setNewWindowEnd(e.target.value)}
+                            min={newWindowStart || getMinDateTime()}
+                            className="w-full rounded-lg bg-[var(--rf-forest)] border border-[rgba(241,234,216,0.18)] text-[var(--rf-bone)] h-12 px-4 focus:outline-none focus:ring-2 focus:ring-[var(--rf-sap)] focus:border-transparent transition-all"
+                          />
+                        </div>
                       </div>
-                      <div className="flex flex-col gap-2">
-                        <label className="text-[var(--rf-bone)] text-sm font-medium">End Date & Time</label>
-                        <input
-                          type="datetime-local"
-                          value={newWindowEnd}
-                          onChange={(e) => setNewWindowEnd(e.target.value)}
-                          min={newWindowStart || getMinDateTime()}
-                          className="w-full rounded-lg bg-[var(--rf-forest)] border border-[rgba(241,234,216,0.18)] text-[var(--rf-bone)] h-12 px-4 focus:outline-none focus:ring-2 focus:ring-[var(--rf-sap)] focus:border-transparent transition-all"
-                        />
+                      <div className="rounded-xl border border-[rgba(241,234,216,0.12)] bg-[var(--rf-forest)] px-4 py-3 flex items-center justify-between gap-4">
+                        <div className="min-w-0">
+                          <p className="text-xs uppercase tracking-[0.25em] text-[var(--rf-bone)]/50">Pickup Window</p>
+                          <p className="text-sm text-[var(--rf-bone)] truncate">
+                            {pickupWindows[0] ? formatPickupWindow(pickupWindows[0]) : 'Set one pickup window for this listing'}
+                          </p>
+                        </div>
+                        <button
+                          type="button"
+                          onClick={addPickupWindow}
+                          className="shrink-0 px-4 py-2 bg-[var(--rf-sap)] hover:bg-[var(--rf-sap-bright)] text-[var(--rf-ink)] rounded-lg font-bold transition-all"
+                        >
+                          {pickupWindows.length === 1 ? 'Replace' : 'Set'}
+                        </button>
                       </div>
                     </div>
                   ) : (
@@ -824,22 +918,24 @@ function EditListingContent() {
                     </div>
                   )}
 
-                  <button
-                    onClick={addPickupWindow}
-                    className="w-full py-3 bg-[var(--rf-moss)] hover:bg-[var(--rf-moss)] text-[var(--rf-bone)] rounded-lg font-medium transition-colors flex items-center justify-center gap-2"
-                  >
-                    <span className="material-symbols-outlined">add</span>
-                    Add Pickup Window
-                  </button>
-
-                  {pickupWindows.length > 0 && (
+                  {scheduleType === 'recurring' && (
                     <div className="flex flex-col gap-2">
-                      <label className="text-[var(--rf-bone)] text-base font-medium leading-normal">Current Pickup Windows</label>
-                      <div className="space-y-2 max-h-64 overflow-y-auto">
+                      <button
+                        onClick={addPickupWindow}
+                        className="w-full py-3 bg-[var(--rf-moss)] hover:bg-[var(--rf-moss)] text-[var(--rf-bone)] rounded-lg font-medium transition-colors flex items-center justify-center gap-2"
+                      >
+                        <span className="material-symbols-outlined">add</span>
+                        Add Pickup Window
+                      </button>
+
+                      {pickupWindows.length > 0 && (
+                        <>
+                          <label className="text-[var(--rf-bone)] text-base font-medium leading-normal">Current Pickup Windows</label>
+                          <div className="space-y-2 max-h-64 overflow-y-auto">
                         {pickupWindows.map((window, index) => (
                           <div key={index} className="flex items-center justify-between p-3 bg-[var(--rf-forest)] rounded-lg border border-[rgba(241,234,216,0.12)]">
                             <p className="text-[var(--rf-bone)] text-sm">
-                              {new Date(window.start).toLocaleString()} - {new Date(window.end).toLocaleString()}
+                              {formatPickupWindow(window)}
                             </p>
                             <button
                               onClick={() => removePickupWindow(index)}
@@ -849,7 +945,9 @@ function EditListingContent() {
                             </button>
                           </div>
                         ))}
-                      </div>
+                          </div>
+                        </>
+                      )}
                     </div>
                   )}
                 </div>

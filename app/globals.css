@@ -95,6 +95,16 @@ body {
   font-style: italic;
 }
 
+.rf-calendar-bone {
+  color: var(--rf-bone);
+  color-scheme: dark;
+}
+
+.rf-calendar-bone::-webkit-calendar-picker-indicator {
+  color: var(--rf-bone);
+  opacity: 1;
+}
+
 .rf-btn-primary {
   background: var(--rf-sap);
   color: var(--rf-forest);

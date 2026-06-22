@@ -67,6 +67,8 @@ export type UserType = 'donor' | 'claimer';
 
 export type MarketplaceRole = 'generator' | 'farmer';
 
+export type MarketplaceScheduleType = 'one-time' | 'recurring';
+
 export type MarketplaceListingStatus = 'live' | 'reserved' | 'completed' | 'expired' | 'cancelled';
 
 export interface MarketplacePickupWindow {
@@ -83,6 +85,7 @@ export interface MarketplaceListing {
   generatorUid: string;
   generatorName?: string;
   generatorContact?: string;
+  scheduleType?: MarketplaceScheduleType;
 
   category: string;
   title: string;
