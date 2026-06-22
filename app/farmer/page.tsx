@@ -642,7 +642,7 @@ function SpecimenCard({
           onClick={(e) => { e.preventDefault(); e.stopPropagation(); onView(); }}
           className="group/btn mt-2 inline-flex items-center justify-between pl-5 pr-1.5 h-11 rounded-full font-mono-jb text-[11px] uppercase tracking-[0.25em] transition-all hover:-translate-y-0.5"
           style={{ background: 'var(--rf-sap)', color: 'var(--rf-forest)' }}>
-          <span>Claim this parcel</span>
+          <span>Claim this item</span>
           <span className="flex items-center justify-center size-8 rounded-full transition-transform group-hover/btn:rotate-45"
                 style={{ background: 'var(--rf-forest)', color: 'var(--rf-sap)' }}>
             <svg viewBox="0 0 24 24" className="size-3" fill="none" stroke="currentColor" strokeWidth="2.5">

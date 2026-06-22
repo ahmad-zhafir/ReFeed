@@ -25,7 +25,13 @@ export default function GeneratorDashboard() {
 function GeneratorDashboardContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const initialTab = (searchParams?.get('tab') as 'dashboard' | 'inventory' | 'orders' | 'analytics' | 'map' | null) || 'dashboard';
+  type GeneratorTab = 'dashboard' | 'inventory' | 'orders' | 'analytics' | 'map';
+
+  const getTabFromSearchParams = (): GeneratorTab => {
+    const tab = searchParams?.get('tab');
+    return tab === 'inventory' || tab === 'orders' || tab === 'analytics' || tab === 'map' ? tab : 'dashboard';
+  };
+
   const [user, setUser] = useState<User | null>(null);
   const [userProfile, setUserProfile] = useState<UserProfile | null>(null);
   const [loading, setLoading] = useState(true);
@@ -33,11 +39,24 @@ function GeneratorDashboardContent() {
   const [orders, setOrders] = useState<MarketplaceOrder[]>([]);
   const [ratings, setRatings] = useState<Record<string, Rating>>({});
   const [searchQuery, setSearchQuery] = useState('');
-  const [activeTab, setActiveTab] = useState<'dashboard' | 'inventory' | 'orders' | 'analytics' | 'map'>(initialTab);
+  const [activeTab, setActiveTab] = useState<GeneratorTab>(getTabFromSearchParams());
+
+  const navigateToTab = (tab: GeneratorTab) => {
+    setActiveTab(tab);
+
+    const params = new URLSearchParams(searchParams?.toString());
+    if (tab === 'dashboard') {
+      params.delete('tab');
+    } else {
+      params.set('tab', tab);
+    }
+
+    const query = params.toString();
+    router.push(query ? `/generator?${query}` : '/generator');
+  };
 
   useEffect(() => {
-    const t = searchParams?.get('tab') as 'dashboard' | 'inventory' | 'orders' | 'analytics' | 'map' | null;
-    if (t) setActiveTab(t);
+    setActiveTab(getTabFromSearchParams());
   }, [searchParams]);
   const [farmers, setFarmers] = useState<UserProfile[]>([]);
   const [orderStatusFilter, setOrderStatusFilter] = useState<'reserved' | 'completed' | 'cancelled'>('reserved');
@@ -706,7 +725,7 @@ function GeneratorDashboardContent() {
                         </h3>
                       </div>
                       <button
-                        onClick={() => setActiveTab('orders')}
+                        onClick={() => navigateToTab('orders')}
                         className="font-mono-jb text-[11px] uppercase tracking-[0.25em] rf-dashed-rule pb-1 opacity-80 hover:opacity-100 hover:text-rf-sap transition-colors"
                       >
                         All orders →
@@ -722,7 +741,7 @@ function GeneratorDashboardContent() {
                         return (
                           <button
                             key={order.id}
-                            onClick={() => setActiveTab('orders')}
+                            onClick={() => navigateToTab('orders')}
                             className="group relative rounded-2xl p-5 border text-left w-full transition-all hover:-translate-y-0.5"
                             style={{ borderColor: 'var(--rf-bone-a14)', background: 'rgba(241,234,216,.025)' }}
                           >
@@ -781,7 +800,7 @@ function GeneratorDashboardContent() {
                       </h3>
                     </div>
                     <button
-                      onClick={() => setActiveTab('inventory')}
+                      onClick={() => navigateToTab('inventory')}
                       className="font-mono-jb text-[11px] uppercase tracking-[0.25em] rf-dashed-rule pb-1 opacity-80 hover:opacity-100 hover:text-rf-sap transition-colors"
                     >
                       All entries →
