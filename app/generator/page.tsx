@@ -476,6 +476,17 @@ function GeneratorDashboardContent() {
     return 'recycling';
   };
 
+  const getPrimaryImage = (listing: MarketplaceListing) => {
+    // Prefer array of images if present, otherwise single imageUrl
+    // Return null when no image is available
+    if (!listing) return null;
+    // @ts-ignore
+    if (listing.imageUrls && Array.isArray(listing.imageUrls) && listing.imageUrls.length > 0) return listing.imageUrls[0];
+    // @ts-ignore
+    if (listing.imageUrl) return listing.imageUrl;
+    return null;
+  };
+
   const getGreeting = () => {
     const hour = new Date().getHours();
     if (hour < 12) return 'Good Morning';
@@ -801,11 +812,26 @@ function GeneratorDashboardContent() {
                                 </td>
                                 <td className="p-4">
                                   <Link href={`/generator/listings/${listing.id}`} className="flex items-center gap-3 group/link">
-                                    <div className="size-10 rounded-lg flex items-center justify-center shrink-0"
+                                    <div className="size-10 rounded-lg flex items-center justify-center shrink-0 overflow-hidden"
                                          style={{ background: 'var(--rf-sap-a10)' }}>
-                                      <span className="material-symbols-outlined text-[20px]" style={{ color: 'var(--rf-sap)' }}>
-                                        {getCategoryIcon(listing.category)}
-                                      </span>
+                                      {getPrimaryImage(listing) ? (
+                                        <>
+                                          <img
+                                            src={getPrimaryImage(listing) as string}
+                                            alt={listing.title}
+                                            className="w-full h-full object-cover"
+                                            onError={(e) => { (e.currentTarget as HTMLImageElement).style.display = 'none'; }}
+                                            onLoad={(e) => { const icon = (e.currentTarget as HTMLImageElement).nextElementSibling as HTMLElement; if (icon) icon.style.display = 'none'; }}
+                                          />
+                                          <span className="material-symbols-outlined text-[20px]" style={{ color: 'var(--rf-sap)' }}>
+                                            {getCategoryIcon(listing.category)}
+                                          </span>
+                                        </>
+                                      ) : (
+                                        <span className="material-symbols-outlined text-[20px]" style={{ color: 'var(--rf-sap)' }}>
+                                          {getCategoryIcon(listing.category)}
+                                        </span>
+                                      )}
                                     </div>
                                     <div>
                                       <p className="font-fraunces text-base font-medium leading-tight group-hover/link:text-rf-sap transition-colors">
@@ -908,11 +934,26 @@ function GeneratorDashboardContent() {
                                 </td>
                                 <td className="p-4">
                                   <Link href={`/generator/listings/${listing.id}`} className="flex items-center gap-3 group/link">
-                                    <div className="size-10 rounded-lg flex items-center justify-center shrink-0"
+                                    <div className="size-10 rounded-lg flex items-center justify-center shrink-0 overflow-hidden"
                                          style={{ background: 'var(--rf-sap-a10)' }}>
-                                      <span className="material-symbols-outlined text-[20px]" style={{ color: 'var(--rf-sap)' }}>
-                                        {getCategoryIcon(listing.category)}
-                                      </span>
+                                      {getPrimaryImage(listing) ? (
+                                        <>
+                                          <img
+                                            src={getPrimaryImage(listing) as string}
+                                            alt={listing.title}
+                                            className="w-full h-full object-cover"
+                                            onError={(e) => { (e.currentTarget as HTMLImageElement).style.display = 'none'; }}
+                                            onLoad={(e) => { const icon = (e.currentTarget as HTMLImageElement).nextElementSibling as HTMLElement; if (icon) icon.style.display = 'none'; }}
+                                          />
+                                          <span className="material-symbols-outlined text-[20px]" style={{ color: 'var(--rf-sap)' }}>
+                                            {getCategoryIcon(listing.category)}
+                                          </span>
+                                        </>
+                                      ) : (
+                                        <span className="material-symbols-outlined text-[20px]" style={{ color: 'var(--rf-sap)' }}>
+                                          {getCategoryIcon(listing.category)}
+                                        </span>
+                                      )}
                                     </div>
                                     <div>
                                       <p className="font-fraunces text-base font-medium leading-tight group-hover/link:text-rf-sap transition-colors">

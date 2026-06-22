@@ -376,8 +376,6 @@ function EditListingContent() {
   const dayNames = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
   const dayAbbr = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
 
-  const formatPickupWindow = (window: MarketplacePickupWindow) =>
-    `${new Date(window.start).toLocaleString([], { weekday: 'short', month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' })} - ${new Date(window.end).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })}`;
 
   const buildRecurringPickupWindows = () => {
     if (recurringDays.length === 0 || !recurringStartTime || !recurringEndTime || !recurringStartDate) {
